@@ -111,7 +111,7 @@ Target: sub-100ms search latency on a 100k-chunk corpus on ordinary laptop hardw
 | Language | Go 1.24+ (single static binary, trivial cross-compile) |
 | CLI | cobra |
 | HTTP | chi |
-| Storage | SQLite (mattn/go-sqlite3) + sqlite-vec + FTS5 (note: CGo; cross-compile via zig cc) |
+| Storage | SQLite via ncruces/go-sqlite3 (WASM/wazero — pure Go, zero CGo; decided at M0). FTS5 via its ext/fts5; vectors at M1 via its ext/vec1 or sqlite-vec ncruces bindings. Kills the CGo cross-compile risk outright; benchmark vs native (mattn + zig cc) at M1 and swap behind the store interface only if the sub-100ms target demands it |
 | File watching | fsnotify |
 | Embeddings v1 | Ollama HTTP API, default `nomic-embed-text` (decided: most-pulled Ollama embedder, 274MB, 8k context, best size/quality balance); auto-detect, graceful fallback; eval harness also tracks `embeddinggemma` as challenger |
 | Embeddings v2 | ONNX Runtime (hugot / onnxruntime_go) with a bundled small model (candidates: all-MiniLM-L6-v2 at 46MB, EmbeddingGemma-300M) — removes the Ollama dependency |
@@ -203,7 +203,7 @@ Standing habits from M0: (1) an eval set of ~10 queries with expected results, r
 
 | Risk | Mitigation |
 |---|---|
-| CGo (sqlite-vec) complicates cross-compilation | zig cc toolchain; CI builds all targets from day one |
+| CGo (sqlite-vec) complicates cross-compilation | Eliminated at M0: WASM SQLite driver (ncruces) is pure Go, so plain GOOS/GOARCH cross-compiles work. Fallback if M1 benchmarks demand native speed: mattn + zig cc, isolated behind the store interface |
 | PDF extraction quality — citations are worthless if extracted text is garbage; the riskiest milestone is M2, not M1 | go-pdfium (PDFium = Chrome's PDF engine) instead of naive parsers; extraction-quality cases in the eval set from M2; real-world contract/paper PDFs in the test corpus |
 | Go ML ecosystem is thin (embeddings) | v1 delegates to Ollama; ONNX bundling deferred to v2 |
 | Solo dev learning Go + RAG simultaneously | Milestone order keeps something working at all times; Python lab for risky experiments |

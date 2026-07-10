@@ -1,20 +1,68 @@
-# Eval query set. Populated at M0 with ~10 queries over the fixture corpus;
-# grows whenever a real-world retrieval miss is found.
+# Eval query set: each query must rank at least one of its expected files in
+# the top 3 results against eval/corpus. Runs as `go test ./eval` — in CI on
+# every change. Grows whenever a real-world retrieval miss is found.
 #
-# Schema per entry:
 #   query:    the search text a user would type
-#   expects:  list of corpus files (optionally file#section) that a correct
-#             retrieval must rank in the top results
+#   expects:  corpus files a correct retrieval must rank highly
 #   kind:     keyword | semantic | hybrid — what capability this case guards
-#
-# Example (activated once corpus/ has documents at M0):
-#
-# - query: "termination clause"
-#   expects: ["corpus/contracts/meridian-services-agreement.md#termination"]
-#   kind: keyword
-#
-# - query: "agreement cancellation"
-#   expects: ["corpus/contracts/meridian-services-agreement.md#termination"]
-#   kind: semantic
+#             (semantic cases activate at M1 when embeddings land)
 
-queries: []
+queries:
+  - query: "termination notice"
+    expects: ["corpus/contracts/meridian-services-agreement.md"]
+    kind: keyword
+
+  - query: "MSA-2024-117"
+    expects: ["corpus/contracts/meridian-services-agreement.md"]
+    kind: keyword
+
+  - query: "payment terms invoice"
+    expects: ["corpus/contracts/meridian-services-agreement.md"]
+    kind: keyword
+
+  - query: "governing law Delaware"
+    expects: ["corpus/contracts/meridian-services-agreement.md"]
+    kind: keyword
+
+  - query: "connection pool exhaustion"
+    expects: ["corpus/ops/incident-2026-03-14.md"]
+    kind: keyword
+
+  - query: "retry storm"
+    expects: ["corpus/ops/incident-2026-03-14.md"]
+    kind: keyword
+
+  - query: "WAL mode"
+    expects: ["corpus/notes/database-decisions.md"]
+    kind: keyword
+
+  - query: "reciprocal rank fusion"
+    expects: ["corpus/research/vector-search-notes.md"]
+    kind: keyword
+
+  - query: "HNSW"
+    expects: ["corpus/research/vector-search-notes.md"]
+    kind: keyword
+
+  - query: "oak cabinets"
+    expects: ["corpus/notes/kitchen-renovation.md"]
+    kind: keyword
+
+  - query: "renovation budget"
+    expects: ["corpus/notes/kitchen-renovation.md"]
+    kind: keyword
+
+  # Semantic cases — different words than the documents use. These are the
+  # M1 acceptance criteria ("agreement cancellation" must find termination
+  # clauses) and are skipped until embeddings land.
+  - query: "agreement cancellation"
+    expects: ["corpus/contracts/meridian-services-agreement.md"]
+    kind: semantic
+
+  - query: "database ran out of connections"
+    expects: ["corpus/ops/incident-2026-03-14.md"]
+    kind: semantic
+
+  - query: "combining keyword and vector results"
+    expects: ["corpus/research/vector-search-notes.md"]
+    kind: semantic

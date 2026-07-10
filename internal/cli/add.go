@@ -1,9 +1,12 @@
 package cli
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/BenyD/haypile/internal/index"
+	"github.com/BenyD/haypile/internal/ingest"
 )
 
 func newAddCmd() *cobra.Command {
@@ -14,7 +17,24 @@ func newAddCmd() *cobra.Command {
 		Short: "Index a folder and watch it for changes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not implemented yet — M0 in progress (see docs/PRD.md §11)")
+			st, err := index.Open(index.DefaultPath())
+			if err != nil {
+				return err
+			}
+			defer st.Close()
+
+			out := cmd.OutOrStdout()
+			stats, err := ingest.IndexFolder(st, args[0], tag, func(path string) {
+				fmt.Fprintf(out, "  %s\n", path)
+			})
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintf(out, "Indexed %d files (%d chunks), %d unchanged.\n",
+				stats.Indexed, stats.Chunks, stats.Skipped)
+			fmt.Fprintln(out, `Try: hay search "something you remember"`)
+			return nil
 		},
 	}
 

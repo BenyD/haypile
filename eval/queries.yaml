@@ -1,0 +1,20 @@
+# Eval query set. Populated at M0 with ~10 queries over the fixture corpus;
+# grows whenever a real-world retrieval miss is found.
+#
+# Schema per entry:
+#   query:    the search text a user would type
+#   expects:  list of corpus files (optionally file#section) that a correct
+#             retrieval must rank in the top results
+#   kind:     keyword | semantic | hybrid — what capability this case guards
+#
+# Example (activated once corpus/ has documents at M0):
+#
+# - query: "termination clause"
+#   expects: ["corpus/contracts/meridian-services-agreement.md#termination"]
+#   kind: keyword
+#
+# - query: "agreement cancellation"
+#   expects: ["corpus/contracts/meridian-services-agreement.md#termination"]
+#   kind: semantic
+
+queries: []

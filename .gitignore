@@ -1,0 +1,19 @@
+# Binaries
+/hay
+/dist/
+
+# Test & database artifacts
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+coverage.out
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# Python lab
+lab/.venv/
+lab/__pycache__/

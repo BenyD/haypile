@@ -55,7 +55,7 @@ Buyer and user are different people. An IT consultant installs Haypile on an off
 ```
 hay add <folder> [--tag <tag>]   # index a folder and watch it for changes
 hay search "<query>" [--tag]     # hybrid retrieval, results with citations
-hay ask "<question>"             # RAG answer with cited sources (requires Ollama)
+hay ask "<question>"             # RAG answer with cited sources (requires a local LLM endpoint)
 hay list                         # indexed folders, doc counts, index health
 hay remove <folder>              # un-index a folder
 hay status                       # daemon status, model info, "0 external connections"
@@ -65,7 +65,7 @@ hay serve                        # run the daemon (REST API + MCP on localhost:1
 Design rules:
 - `hay add` starts indexing immediately with a visible progress bar and prints the next command to try. Time from install to first successful search: **under 2 minutes**.
 - Any command auto-starts the daemon if it isn't running. Users never learn the daemon/client distinction.
-- **The no-Ollama experience is first-class, not a fallback.** Keyword search (FTS5 + BM25) must be excellent on its own — install → `hay add` → first successful search works with zero dependencies, keeping the 2-minute activation promise honest. When Ollama is detected, semantic search lights up automatically as an upgrade. `hay ask` without Ollama explains what's missing and falls back to `hay search`. Search never requires an LLM.
+- **Search is fully self-contained — no Ollama, ever (decided July 2026).** Both keyword and semantic search work out of the box: the embedding model ships inside the binary. Install → `hay add` → first successful search with zero external dependencies, keeping the 2-minute activation promise literally true. `hay ask` uses any OpenAI-compatible local LLM endpoint (LM Studio, llama.cpp, Jan, Ollama, …) — auto-detected on common ports, `--endpoint` to override; without one it explains and falls back to `hay search`. Search never requires an LLM.
 - Citations (file path + page number) appear in all search and ask output. Non-negotiable.
 
 ### 5.2 File formats (v1)
@@ -90,7 +90,7 @@ Four subsystems; CLI, REST, and MCP are thin clients over one core engine.
 
 **Storage:** single SQLite file. FTS5 for keyword index, sqlite-vec for vectors, plus tables for files (content hashes), chunks (with byte offsets into source files — store pointers, not duplicated text), and the embedding cache.
 
-**Query pipeline:** embed query → vector search + FTS5 keyword search in parallel → merge with Reciprocal Rank Fusion → return top chunks with citations → (optional) LLM generation via Ollama for `ask`.
+**Query pipeline:** embed query → vector search + FTS5 keyword search in parallel → merge with Reciprocal Rank Fusion → return top chunks with citations → (optional) LLM generation via the configured local endpoint for `ask`.
 
 **Interfaces:** cobra CLI, chi HTTP server, MCP handler — all compiled into the one binary.
 
@@ -113,8 +113,8 @@ Target: sub-100ms search latency on a 100k-chunk corpus on ordinary laptop hardw
 | HTTP | chi |
 | Storage | SQLite via ncruces/go-sqlite3 (WASM/wazero — pure Go, zero CGo; decided at M0). FTS5 via its ext/fts5; vectors at M1 via its ext/vec1 or sqlite-vec ncruces bindings. Kills the CGo cross-compile risk outright; benchmark vs native (mattn + zig cc) at M1 and swap behind the store interface only if the sub-100ms target demands it |
 | File watching | fsnotify |
-| Embeddings v1 | Ollama HTTP API, default `nomic-embed-text` (decided: most-pulled Ollama embedder, 274MB, 8k context, best size/quality balance); auto-detect, graceful fallback; eval harness also tracks `embeddinggemma` as challenger |
-| Embeddings v2 | ONNX Runtime (hugot / onnxruntime_go) with a bundled small model (candidates: all-MiniLM-L6-v2 at 46MB, EmbeddingGemma-300M) — removes the Ollama dependency |
+| Embeddings | **Bundled in the binary** (decided July 2026 — no Ollama, ever). Runtime: pure-Go inference first (nlpodyssey/cybertron — preserves the zero-CGo build); fall back to ONNX Runtime only if M1 benchmarks miss the throughput/latency bar. Model: small bundled default, picked by the M1 eval (candidates: all-MiniLM-L6-v2 ~23MB quantized, EmbeddingGemma-300M) |
+| Answer generation | `hay ask` speaks to any OpenAI-compatible local endpoint (LM Studio, llama.cpp server, Jan, Ollama, …): auto-detect common ports, `--endpoint` override. No named LLM dependency |
 | Extraction | PDF: klippa-app/go-pdfium via its WASM/wazero build (Chrome's PDFium engine — production-grade extraction, no CGo, cross-compiles cleanly; ledongthuc/pdf rejected — text-order/whitespace mangling on real-world PDFs); stdlib zip+XML for docx; goldmark for markdown |
 | Releases | goreleaser → GitHub Releases, Homebrew tap, install script |
 | Marketing site / docs | Cloudflare Pages (Astro + Starlight) |
@@ -128,7 +128,7 @@ Target: sub-100ms search latency on a 100k-chunk corpus on ordinary laptop hardw
 - No auth / multi-user / roles (paid tier, post-v1)
 - No cloud sync or hosted service (v2+, Cloudflare-native twin: Vectorize + Workers AI + R2 + Queues)
 - No OCR for scanned documents (v1.x)
-- No bundled LLM — generation is delegated to Ollama
+- No bundled LLM — bundling an embedding model is fine (megabytes); bundling an LLM is not (gigabytes). Generation is delegated to whatever OpenAI-compatible local server the user runs
 - No Windows-service polish beyond "the binary runs" (installer polish v1.x)
 - No connectors to SaaS sources (Slack, Notion, Gmail) — filesystem only in v1
 
@@ -175,10 +175,10 @@ Haypile's brand *is* trust. Ollama is the architecture role model **and** the ca
 | Milestone | Scope | Definition of done |
 |---|---|---|
 | **M0 — Walking skeleton** (wk 1) | cobra CLI, `hay add` + `hay search`, naive chunking, SQLite + FTS5 keyword search only | Index a folder of .md/.txt and get ranked keyword results |
-| **M1 — Semantic** (wk 2–3) | Ollama embeddings, sqlite-vec, hybrid search + RRF, embedding cache | "agreement cancellation" finds "termination clauses" |
+| **M1 — Semantic** (wk 2–4) | Bundled embeddings (pure-Go inference; benchmark vs ONNX), vector index, hybrid search + RRF, embedding cache | "agreement cancellation" finds "termination clauses" — with zero external dependencies |
 | **M2 — Real documents** (wk 3–4) | PDF + docx extraction, structure-aware chunking, page-number metadata, citations in output | Search a folder of PDFs, results cite file + page |
 | **M3 — Daemon** (wk 4–5) | `hay serve`, chi REST API, fsnotify watcher, worker pool, auto-start | Drop a file in a watched folder; it's searchable in seconds |
-| **M4 — Ask + MCP** (wk 5–6) | `hay ask` via Ollama with cited sources; MCP server; editor config docs | Claude Code answers a question from local docs through Haypile |
+| **M4 — Ask + MCP** (wk 6–7) | `hay ask` via any OpenAI-compatible local endpoint, with cited sources; MCP server; editor config docs | Claude Code answers a question from local docs through Haypile |
 | **M5 — Launch** (wk 6–8) | goreleaser, Homebrew tap, haypile.sh installer, README with demo GIF, eval set, Show HN | Public launch |
 
 Standing habits from M0: (1) an eval set of ~10 queries with expected results, run on every retrieval-affecting change; (2) build-in-public posts per milestone; (3) **testing policy** — `go test ./... -race` + the eval runner, all green before any merge, wired into CI at M0 alongside cross-compilation. Test the engine, not the wiring: chunker, RRF merge, embedding cache, and incremental-indexing logic get thorough table-driven tests; extractors are tested against a `testdata/` corpus of real fixture files (including deliberately nasty PDFs); every CLI command and API endpoint gets happy-path + key-failure integration tests against a temp SQLite db. From M3, one end-to-end daemon smoke test in CI (serve → add folder → wait for index → query API → assert citations) runs under `-race` to catch what mocked concurrency hides. No coverage-percentage chasing on thin CLI wiring.
@@ -189,7 +189,7 @@ Standing habits from M0: (1) an eval set of ~10 queries with expected results, r
 |---|---|
 | v1.x | OCR for scanned PDFs, pptx + html extraction, Windows installer polish |
 | **v1.5** | **`hay web` — minimal bundled local web UI** (search box → answer with clickable citations → source preview). Free, AGPL, single-user, served by the existing daemon on localhost. This is the non-technical-user entry point; developed fully in the open per §10.2 — explicitly *not* the Ollama private-repo GUI move. Community UIs on the API are encouraged and linked from the README before v1.5 exists. |
-| v2 | ONNX-bundled embeddings (no Ollama dependency), ANN index for very large corpora, possible Ollama-style desktop/tray app if v1.5 usage justifies it |
+| v2 | Optional larger embedding models, ANN index for very large corpora, possible desktop/tray app if v1.5 usage justifies it |
 | Pro (post-v1) | Team layer: auth, roles, audit logs, shared indexes, team web UI (paid — see §10.3) |
 
 ## 12. Success metrics
@@ -205,7 +205,7 @@ Standing habits from M0: (1) an eval set of ~10 queries with expected results, r
 |---|---|
 | CGo (sqlite-vec) complicates cross-compilation | Eliminated at M0: WASM SQLite driver (ncruces) is pure Go, so plain GOOS/GOARCH cross-compiles work. Fallback if M1 benchmarks demand native speed: mattn + zig cc, isolated behind the store interface |
 | PDF extraction quality — citations are worthless if extracted text is garbage; the riskiest milestone is M2, not M1 | go-pdfium (PDFium = Chrome's PDF engine) instead of naive parsers; extraction-quality cases in the eval set from M2; real-world contract/paper PDFs in the test corpus |
-| Go ML ecosystem is thin (embeddings) | v1 delegates to Ollama; ONNX bundling deferred to v2 |
+| Go ML ecosystem is thin — bundled pure-Go inference may index large corpora slowly | Hard benchmark bar at M1 (throughput + query latency); ONNX Runtime fallback isolated behind the embedder interface; embedding cache makes indexing a one-time cost; async worker pool keeps search available during it |
 | Solo dev learning Go + RAG simultaneously | Milestone order keeps something working at all times; Python lab for risky experiments |
 | Haystack name adjacency | Distinct word, distinct category; monitor, don't pre-optimize |
 | Retrieval quality regressions are invisible | Eval set from M0 |
@@ -214,7 +214,7 @@ Standing habits from M0: (1) an eval set of ~10 queries with expected results, r
 
 ## 14. Decisions (open questions resolved — July 2026)
 
-1. **Default embedding model: `nomic-embed-text`.** Most-pulled embedding model on Ollama, 274MB, 8,192-token context, best size/quality balance for laptop hardware; `all-MiniLM-L6-v2` is meaningfully weaker on retrieval quality and survives only as an ONNX-bundling candidate for v2 (46MB). The M1 eval harness still runs `embeddinggemma` (300M, strong multilingual MTEB scores) as challenger — swap only if the eval says so.
+1. **Embeddings are bundled in the binary — no Ollama dependency at all** (decided July 2026, superseding the earlier `nomic-embed-text` choice, which only made sense on the Ollama path). The default bundled model is picked by the M1 eval between `all-MiniLM-L6-v2` (~23MB quantized — small binary) and `EmbeddingGemma-300M` (stronger retrieval, bigger binary); accuracy on the eval set wins, size breaks ties.
 2. **Chunk defaults: start at ~500 tokens with 10–15% overlap**, structure-aware splitting as specified in §6. This is a knob tuned by the eval harness at M1, not a decision to debate upfront; the eval set is the tie-breaker for all retrieval parameters.
 3. **MCP transport: Streamable HTTP first, stdio second.** The MCP spec (2025-11-25) recognizes exactly two transports — stdio and Streamable HTTP; HTTP+SSE is deprecated. Claude Code, Cursor, and Claude Desktop all support Streamable HTTP, and since the daemon already serves HTTP on :11500, this transport is nearly free. Ship a thin stdio proxy binary-mode (`hay mcp-stdio`) at M4 for clients that prefer launching a process.
 4. **Telemetry: none at launch, period.** "Zero external connections" and "anonymous usage pings" cannot share a README; the brand is the verifiable claim. Adoption is measured server-side without touching the user's machine: haypile.sh installer download counts (Cloudflare analytics), Homebrew tap analytics, GitHub stars/issues. Revisit only if a future opt-in mechanism can be loudly documented and off by default per §10.2.

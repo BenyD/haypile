@@ -40,6 +40,26 @@ CREATE TABLE IF NOT EXISTS chunks (
 );
 CREATE INDEX IF NOT EXISTS chunks_file ON chunks(file_id);
 
+CREATE TABLE IF NOT EXISTS meta (
+	key   TEXT PRIMARY KEY,
+	value TEXT NOT NULL
+);
+
+-- One vector per chunk, from the model recorded in meta('embed_model').
+CREATE TABLE IF NOT EXISTS embeddings (
+	chunk_id INTEGER PRIMARY KEY REFERENCES chunks(id),
+	vector   BLOB NOT NULL
+);
+
+-- Content-addressed cache: the same text is never embedded twice, even
+-- across files, re-indexes, or removals.
+CREATE TABLE IF NOT EXISTS embedding_cache (
+	sha    TEXT NOT NULL,
+	model  TEXT NOT NULL,
+	vector BLOB NOT NULL,
+	PRIMARY KEY (sha, model)
+);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
 	text,
 	content='chunks',
@@ -154,6 +174,10 @@ func (s *Store) RemoveSource(path string) (bool, error) {
 	}
 	defer tx.Rollback()
 
+	if _, err := tx.Exec(`DELETE FROM embeddings WHERE chunk_id IN
+		(SELECT c.id FROM chunks c JOIN files f ON c.file_id = f.id WHERE f.source_id = ?)`, id); err != nil {
+		return false, err
+	}
 	if _, err := tx.Exec(`DELETE FROM chunks WHERE file_id IN (SELECT id FROM files WHERE source_id = ?)`, id); err != nil {
 		return false, err
 	}
@@ -197,6 +221,10 @@ func (s *Store) UpsertFile(sourceID int64, path, sha string, size, mtime int64, 
 	if err := tx.QueryRow(`SELECT id FROM files WHERE path = ?`, path).Scan(&fileID); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(`DELETE FROM embeddings WHERE chunk_id IN
+		(SELECT id FROM chunks WHERE file_id = ?)`, fileID); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`DELETE FROM chunks WHERE file_id = ?`, fileID); err != nil {
 		return err
 	}
@@ -238,6 +266,10 @@ func (s *Store) PruneFiles(sourceID int64, keep map[string]bool) error {
 	}
 
 	for _, id := range stale {
+		if _, err := s.db.Exec(`DELETE FROM embeddings WHERE chunk_id IN
+			(SELECT id FROM chunks WHERE file_id = ?)`, id); err != nil {
+			return err
+		}
 		if _, err := s.db.Exec(`DELETE FROM chunks WHERE file_id = ?`, id); err != nil {
 			return err
 		}

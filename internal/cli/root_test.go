@@ -2,6 +2,9 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,5 +105,55 @@ func TestAddSearchListRemoveEndToEnd(t *testing.T) {
 	out, _ = run(t, "search", "terminate notice")
 	if strings.Contains(out, "contract.md") {
 		t.Errorf("removed folder still searchable:\n%s", out)
+	}
+}
+
+// TestSemanticEndToEnd drives the whole env-configured semantic path: a
+// fake OpenAI-compatible endpoint, hay add embedding chunks through it, and
+// a paraphrase query that keyword search alone cannot answer.
+func TestSemanticEndToEnd(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Input []string `json:"input"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		data := make([]map[string]any, len(req.Input))
+		for i, text := range req.Input {
+			// Toy semantics: termination-ish texts share a direction.
+			vec := []float32{0, 1}
+			if strings.Contains(text, "terminate") || strings.Contains(text, "cancellation") {
+				vec = []float32{1, 0}
+			}
+			data[i] = map[string]any{"index": i, "embedding": vec}
+		}
+		json.NewEncoder(w).Encode(map[string]any{"data": data})
+	}))
+	defer srv.Close()
+
+	t.Setenv("HAYPILE_DIR", t.TempDir())
+	t.Setenv("HAYPILE_EMBED_ENDPOINT", srv.URL+"/v1")
+	t.Setenv("HAYPILE_EMBED_MODEL", "fake-model")
+
+	docs := t.TempDir()
+	os.WriteFile(filepath.Join(docs, "contract.md"),
+		[]byte("Either party may terminate with sixty days written notice.\n"), 0o644)
+	os.WriteFile(filepath.Join(docs, "kitchen.md"),
+		[]byte("Going with white oak cabinets for the renovation.\n"), 0o644)
+
+	out, err := run(t, "add", docs)
+	if err != nil {
+		t.Fatalf("add: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Embedded 2 chunks") {
+		t.Errorf("add did not embed:\n%s", out)
+	}
+
+	// No shared words with the contract — only the vector leg can find it.
+	out, err = run(t, "search", "agreement cancellation")
+	if err != nil {
+		t.Fatalf("search: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "contract.md") {
+		t.Errorf("semantic search failed to find paraphrase:\n%s", out)
 	}
 }

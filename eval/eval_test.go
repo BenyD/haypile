@@ -5,6 +5,7 @@
 package eval
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,8 +13,10 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/BenyD/haypile/internal/embed"
 	"github.com/BenyD/haypile/internal/index"
 	"github.com/BenyD/haypile/internal/ingest"
+	"github.com/BenyD/haypile/internal/query"
 )
 
 const topK = 3
@@ -41,13 +44,21 @@ func TestRetrievalEval(t *testing.T) {
 		t.Fatal("queries.yaml has no queries — the eval gate is not allowed to be empty")
 	}
 
+	// With HAYPILE_EMBED_ENDPOINT/MODEL set, the eval also runs the
+	// semantic cases through the full hybrid path. Without it (e.g. CI
+	// until the bundled model lands), semantic cases are skipped.
+	emb, err := embed.FromEnv()
+	if err != nil {
+		t.Fatalf("embedder config: %v", err)
+	}
+
 	st, err := index.Open(filepath.Join(t.TempDir(), "eval.db"))
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
 	defer st.Close()
 
-	stats, err := ingest.IndexFolder(st, "corpus", "", nil)
+	stats, err := ingest.IndexFolder(st, "corpus", "", emb, nil)
 	if err != nil {
 		t.Fatalf("index corpus: %v", err)
 	}
@@ -57,11 +68,11 @@ func TestRetrievalEval(t *testing.T) {
 
 	for _, c := range qs.Queries {
 		t.Run(c.Query, func(t *testing.T) {
-			if c.Kind == "semantic" {
-				t.Skipf("semantic retrieval lands at M1")
+			if c.Kind == "semantic" && emb == nil {
+				t.Skipf("no embedder configured (set HAYPILE_EMBED_ENDPOINT + HAYPILE_EMBED_MODEL, or wait for the bundled model)")
 			}
 
-			results, err := st.Search(c.Query, "", topK)
+			results, err := query.Hybrid(context.Background(), st, emb, c.Query, "", topK)
 			if err != nil {
 				t.Fatalf("search: %v", err)
 			}

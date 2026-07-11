@@ -5,7 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/BenyD/haypile/internal/embed"
 	"github.com/BenyD/haypile/internal/index"
+	"github.com/BenyD/haypile/internal/query"
 )
 
 func newSearchCmd() *cobra.Command {
@@ -17,13 +19,18 @@ func newSearchCmd() *cobra.Command {
 		Short: "Search indexed documents, results with citations",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			emb, err := embed.FromEnv()
+			if err != nil {
+				return err
+			}
+
 			st, err := index.Open(index.DefaultPath())
 			if err != nil {
 				return err
 			}
 			defer st.Close()
 
-			results, err := st.Search(args[0], tag, limit)
+			results, err := query.Hybrid(cmd.Context(), st, emb, args[0], tag, limit)
 			if err != nil {
 				return err
 			}

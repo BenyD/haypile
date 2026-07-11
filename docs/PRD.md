@@ -113,7 +113,7 @@ Target: sub-100ms search latency on a 100k-chunk corpus on ordinary laptop hardw
 | HTTP | chi |
 | Storage | SQLite via ncruces/go-sqlite3 (WASM/wazero — pure Go, zero CGo; decided at M0). FTS5 via its ext/fts5; vectors at M1 via its ext/vec1 or sqlite-vec ncruces bindings. Kills the CGo cross-compile risk outright; benchmark vs native (mattn + zig cc) at M1 and swap behind the store interface only if the sub-100ms target demands it |
 | File watching | fsnotify |
-| Embeddings | **Bundled in the binary** (decided July 2026 — no Ollama, ever). Runtime: pure-Go inference first (nlpodyssey/cybertron — preserves the zero-CGo build); fall back to ONNX Runtime only if M1 benchmarks miss the throughput/latency bar. Model: small bundled default, picked by the M1 eval (candidates: all-MiniLM-L6-v2 ~23MB quantized, EmbeddingGemma-300M) |
+| Embeddings | Two backends behind one interface (both M1). **Bundled (default):** model ships in the binary — pure-Go inference first (preserves zero-CGo), ONNX Runtime fallback only if benchmarks miss the bar; default model picked by the eval (all-MiniLM-L6-v2 ~23MB quantized vs EmbeddingGemma-300M). **Endpoint (optional):** any OpenAI-compatible local server (Ollama, LM Studio, llama.cpp, …) for bigger models and GPU throughput — bundled-by-default, better-by-choice. Each index records the model that built it; vectors from different models never mix; switching models re-embeds via the cache |
 | Answer generation | `hay ask` speaks to any OpenAI-compatible local endpoint (LM Studio, llama.cpp server, Jan, Ollama, …): auto-detect common ports, `--endpoint` override. No named LLM dependency |
 | Extraction | PDF: klippa-app/go-pdfium via its WASM/wazero build (Chrome's PDFium engine — production-grade extraction, no CGo, cross-compiles cleanly; ledongthuc/pdf rejected — text-order/whitespace mangling on real-world PDFs); stdlib zip+XML for docx; goldmark for markdown |
 | Releases | goreleaser → GitHub Releases, Homebrew tap, install script |
@@ -175,7 +175,7 @@ Haypile's brand *is* trust. Ollama is the architecture role model **and** the ca
 | Milestone | Scope | Definition of done |
 |---|---|---|
 | **M0 — Walking skeleton** (wk 1) | cobra CLI, `hay add` + `hay search`, naive chunking, SQLite + FTS5 keyword search only | Index a folder of .md/.txt and get ranked keyword results |
-| **M1 — Semantic** (wk 2–4) | Bundled embeddings (pure-Go inference; benchmark vs ONNX), vector index, hybrid search + RRF, embedding cache | "agreement cancellation" finds "termination clauses" — with zero external dependencies |
+| **M1 — Semantic** (wk 2–4) | Two-backend embedder (bundled default + optional OpenAI-compatible endpoint), vector index, hybrid search + RRF, content-addressed embedding cache | "agreement cancellation" finds "termination clauses" — with zero external dependencies |
 | **M2 — Real documents** (wk 3–4) | PDF + docx extraction, structure-aware chunking, page-number metadata, citations in output | Search a folder of PDFs, results cite file + page |
 | **M3 — Daemon** (wk 4–5) | `hay serve`, chi REST API, fsnotify watcher, worker pool, auto-start | Drop a file in a watched folder; it's searchable in seconds |
 | **M4 — Ask + MCP** (wk 6–7) | `hay ask` via any OpenAI-compatible local endpoint, with cited sources; MCP server; editor config docs | Claude Code answers a question from local docs through Haypile |

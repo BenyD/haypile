@@ -1,8 +1,8 @@
 // Package embed turns text into vectors for semantic search. Two backends
-// implement Embedder: an OpenAI-compatible endpoint (this file's siblings)
-// and the bundled in-binary model (landing later in M1). Vectors from
-// different models are never comparable — the index records which model
-// built it.
+// implement Embedder: the bundled in-binary model (the no-configuration
+// default, see the bundled subpackage) and an OpenAI-compatible endpoint
+// for power users. Vectors from different models are never comparable —
+// the index records which model built it.
 package embed
 
 import (

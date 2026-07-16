@@ -61,6 +61,18 @@ go build ./cmd/hay     # build the binary
 go test ./... -race    # run tests (green before any merge)
 ```
 
+Semantic search uses an embedding model that release builds carry inside
+the binary. Dev builds load it from disk instead, so the 90MB file stays
+out of git:
+
+```sh
+./hack/fetch-model.sh                    # one-time download
+go build -tags bundled ./cmd/hay         # release-style: model in the binary
+HAYPILE_MODEL_PATH=internal/embed/bundled/model.safetensors ./hay …   # dev
+```
+
+Without the model, everything still works in keyword-only mode.
+
 Retrieval quality is measured, not vibes: [eval/](eval/) holds a query set with expected results that runs on every retrieval-affecting change.
 
 ## License

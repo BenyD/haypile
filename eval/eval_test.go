@@ -44,9 +44,16 @@ func TestRetrievalEval(t *testing.T) {
 		t.Fatal("queries.yaml has no queries — the eval gate is not allowed to be empty")
 	}
 
-	// With HAYPILE_EMBED_ENDPOINT/MODEL set, the eval also runs the
-	// semantic cases through the full hybrid path. Without it (e.g. CI
-	// until the bundled model lands), semantic cases are skipped.
+	// The eval runs semantic cases through the bundled model whenever the
+	// weight file is present (hack/fetch-model.sh); an explicit
+	// HAYPILE_EMBED_ENDPOINT/MODEL pair overrides it. With neither,
+	// semantic cases are skipped.
+	const weights = "../internal/embed/bundled/model.safetensors"
+	if os.Getenv("HAYPILE_MODEL_PATH") == "" && os.Getenv("HAYPILE_EMBED_ENDPOINT") == "" {
+		if _, err := os.Stat(weights); err == nil {
+			t.Setenv("HAYPILE_MODEL_PATH", weights)
+		}
+	}
 	emb, err := embed.FromEnv()
 	if err != nil {
 		t.Fatalf("embedder config: %v", err)

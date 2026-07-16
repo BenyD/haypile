@@ -13,6 +13,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
+      # The bundled-embedder tests need the model weights; cache the 90MB
+      # download so CI only pays for it when the model changes.
+      - name: cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: internal/embed/bundled/model.safetensors
+          key: minilm-l6-v2-safetensors
+      - name: fetch embedding model
+        run: ./hack/fetch-model.sh
       - name: gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - name: vet

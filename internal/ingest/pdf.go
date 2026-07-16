@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -24,10 +25,12 @@ var (
 
 func pdfInstance() (pdfium.Pdfium, error) {
 	pdfOnce.Do(func() {
+		// One warm instance for today's serial walk; room to grow for the
+		// M3 worker pool without another instantiation stampede.
 		pdfPool, pdfErr = webassembly.Init(webassembly.Config{
 			MinIdle:  1,
-			MaxIdle:  1,
-			MaxTotal: 1,
+			MaxIdle:  2,
+			MaxTotal: runtime.GOMAXPROCS(0),
 		})
 	})
 	if pdfErr != nil {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 )
 
 // MiniLM-L6 architecture constants. These describe the bundled checkpoint;
@@ -94,11 +95,34 @@ func newModel(tensors map[string]tensor) (*model, error) {
 	return m, nil
 }
 
+// scratch holds one forward pass's working memory, sized for the longest
+// sequence and pooled: indexing embeds thousands of chunks and per-call
+// allocation of ~4MB would be pure GC churn. Every slice is fully written
+// before it is read, so reuse needs no zeroing.
+type scratch struct {
+	hidden, q, k, v, ctxOut, residual, scores, ffnMid []float32
+}
+
+var scratchPool = sync.Pool{New: func() any {
+	return &scratch{
+		hidden:   make([]float32, maxSeqLen*hiddenDim),
+		q:        make([]float32, maxSeqLen*hiddenDim),
+		k:        make([]float32, maxSeqLen*hiddenDim),
+		v:        make([]float32, maxSeqLen*hiddenDim),
+		ctxOut:   make([]float32, maxSeqLen*hiddenDim),
+		residual: make([]float32, maxSeqLen*hiddenDim),
+		scores:   make([]float32, maxSeqLen*maxSeqLen),
+		ffnMid:   make([]float32, maxSeqLen*intermediate),
+	}
+}}
+
 // forward runs the encoder over one tokenized sequence and returns the
 // mean-pooled, L2-normalized sentence embedding.
 func (m *model) forward(ids []int32) []float32 {
 	seq := len(ids)
-	hidden := make([]float32, seq*hiddenDim)
+	s := scratchPool.Get().(*scratch)
+	defer scratchPool.Put(s)
+	hidden := s.hidden[:seq*hiddenDim]
 
 	// Embedding sum: word + position + token type (always 0), then LayerNorm.
 	for i, id := range ids {
@@ -112,13 +136,13 @@ func (m *model) forward(ids []int32) []float32 {
 		applyLayerNorm(row, m.embNorm)
 	}
 
-	scores := make([]float32, seq*seq) // attention score scratch
-	q := make([]float32, seq*hiddenDim)
-	k := make([]float32, seq*hiddenDim)
-	v := make([]float32, seq*hiddenDim)
-	ctxOut := make([]float32, seq*hiddenDim)
-	ffnMid := make([]float32, seq*intermediate)
-	residual := make([]float32, seq*hiddenDim)
+	scores := s.scores[:seq*seq]
+	q := s.q[:seq*hiddenDim]
+	k := s.k[:seq*hiddenDim]
+	v := s.v[:seq*hiddenDim]
+	ctxOut := s.ctxOut[:seq*hiddenDim]
+	ffnMid := s.ffnMid[:seq*intermediate]
+	residual := s.residual[:seq*hiddenDim]
 
 	for _, layer := range m.layers {
 		// Self-attention. No mask needed: sequences are unpadded.

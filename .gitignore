@@ -19,5 +19,6 @@ coverage.out
 lab/.venv/
 lab/__pycache__/
 
-# Bundled model weights (fetched by hack/fetch-model.sh)
+# Bundled model weights (fetched/derived by hack/fetch-model.sh)
 internal/embed/bundled/model.safetensors
+internal/embed/bundled/model.q8.safetensors

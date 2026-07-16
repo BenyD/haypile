@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+// maxDocumentXML bounds how much document.xml we will decompress: 512MB
+// of XML is far beyond any real document and cheap insurance against a
+// crafted zip bomb.
+const maxDocumentXML = 512 << 20
+
 // extractDocx reads the main document part of an OOXML file with the
 // stdlib alone — a .docx is a zip whose word/document.xml holds the text.
 // Word has no static page numbers (pagination happens at render time), so
@@ -27,7 +32,9 @@ func extractDocx(path string) ([]Section, error) {
 				return nil, err
 			}
 			defer rc.Close()
-			return parseDocumentXML(rc)
+			// Cap decompression so a zip-bomb docx can't balloon memory;
+			// no legitimate document part comes close to this.
+			return parseDocumentXML(io.LimitReader(rc, maxDocumentXML))
 		}
 	}
 	return nil, errors.New("no word/document.xml inside docx")

@@ -66,3 +66,13 @@ queries:
   - query: "combining keyword and vector results"
     expects: ["corpus/research/vector-search-notes.md"]
     kind: semantic
+
+  # Extraction-quality gates (M2): these fail if PDF or docx text extraction
+  # degrades, independent of retrieval quality.
+  - query: "2024-CV-01847"
+    expects: ["corpus/contracts/vendor-agreement.pdf"]
+    kind: keyword
+
+  - query: "certified mail"
+    expects: ["corpus/contracts/vendor-deal.docx"]
+    kind: keyword

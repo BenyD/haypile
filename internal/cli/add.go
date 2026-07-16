@@ -39,6 +39,9 @@ func newAddCmd() *cobra.Command {
 
 			fmt.Fprintf(out, "Indexed %d files (%d chunks), %d unchanged.\n",
 				stats.Indexed, stats.Chunks, stats.Skipped)
+			if stats.Failed > 0 {
+				fmt.Fprintf(out, "Warning: %d files could not be read and were skipped.\n", stats.Failed)
+			}
 			if emb != nil {
 				fmt.Fprintf(out, "Embedded %d chunks for semantic search (%s).\n",
 					stats.Embedded, emb.Model())

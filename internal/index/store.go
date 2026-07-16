@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS chunks (
 	id      INTEGER PRIMARY KEY,
 	file_id INTEGER NOT NULL REFERENCES files(id),
 	seq     INTEGER NOT NULL,
+	page    INTEGER NOT NULL DEFAULT 0, -- 1-based; 0 = format has no pages
 	text    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS chunks_file ON chunks(file_id);
@@ -106,6 +107,13 @@ func Open(path string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("apply schema: %w", err)
+	}
+	// Pre-1.0 migration: indexes created before page-number citations (M2)
+	// lack the column. Duplicate-column errors mean already migrated.
+	if _, err := db.Exec(`ALTER TABLE chunks ADD COLUMN page INTEGER NOT NULL DEFAULT 0`); err != nil &&
+		!strings.Contains(err.Error(), "duplicate column") {
+		db.Close()
+		return nil, fmt.Errorf("migrate schema: %w", err)
 	}
 	return &Store{db: db}, nil
 }
@@ -200,8 +208,14 @@ func (s *Store) FileSHA(path string) (string, error) {
 	return sha, err
 }
 
+// Chunk is one indexable piece of a document as the store receives it.
+type Chunk struct {
+	Text string
+	Page int // 1-based page number; 0 when the format has no pages
+}
+
 // UpsertFile records a file and replaces its chunks atomically.
-func (s *Store) UpsertFile(sourceID int64, path, sha string, size, mtime int64, texts []string) error {
+func (s *Store) UpsertFile(sourceID int64, path, sha string, size, mtime int64, chunks []Chunk) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -229,13 +243,13 @@ func (s *Store) UpsertFile(sourceID int64, path, sha string, size, mtime int64, 
 		return err
 	}
 
-	ins, err := tx.Prepare(`INSERT INTO chunks(file_id, seq, text) VALUES (?, ?, ?)`)
+	ins, err := tx.Prepare(`INSERT INTO chunks(file_id, seq, page, text) VALUES (?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
 	defer ins.Close()
-	for i, text := range texts {
-		if _, err := ins.Exec(fileID, i, text); err != nil {
+	for i, c := range chunks {
+		if _, err := ins.Exec(fileID, i, c.Page, c.Text); err != nil {
 			return err
 		}
 	}
@@ -284,6 +298,7 @@ func (s *Store) PruneFiles(sourceID int64, keep map[string]bool) error {
 type Result struct {
 	Path    string
 	Seq     int
+	Page    int // 1-based page number; 0 when the format has no pages
 	Snippet string
 	Score   float64
 }
@@ -298,7 +313,7 @@ func (s *Store) Search(query, tag string, limit int) ([]Result, error) {
 	}
 
 	rows, err := s.db.Query(`
-		SELECT f.path, c.seq, snippet(chunks_fts, 0, '', '', ' … ', 16), -bm25(chunks_fts)
+		SELECT f.path, c.seq, c.page, snippet(chunks_fts, 0, '', '', ' … ', 16), -bm25(chunks_fts)
 		FROM chunks_fts
 		JOIN chunks c ON c.id = chunks_fts.rowid
 		JOIN files f ON f.id = c.file_id
@@ -314,7 +329,7 @@ func (s *Store) Search(query, tag string, limit int) ([]Result, error) {
 	var out []Result
 	for rows.Next() {
 		var r Result
-		if err := rows.Scan(&r.Path, &r.Seq, &r.Snippet, &r.Score); err != nil {
+		if err := rows.Scan(&r.Path, &r.Seq, &r.Page, &r.Snippet, &r.Score); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

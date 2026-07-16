@@ -2,60 +2,102 @@ package ingest
 
 import "strings"
 
-// maxChunkLen is the M0 chunk budget in bytes (~400 tokens). Structure-aware
-// chunking with overlap replaces this naive splitter at M2.
-const maxChunkLen = 1600
+// Chunk budgets in bytes. ~4 bytes per token for English text puts 2000
+// bytes at the PRD's ~500-token target with ~12% overlap; both are knobs
+// the eval set owns.
+const (
+	chunkBudget  = 2000
+	chunkOverlap = 250
+)
 
 // Chunk is one indexable piece of a document.
 type Chunk struct {
 	Seq  int
+	Page int // 1-based page number; 0 when the format has no pages
 	Text string
 }
 
-// Split divides text into chunks on paragraph boundaries, packing adjacent
-// paragraphs together up to maxChunkLen. Paragraphs longer than the budget
-// are hard-split at the nearest space.
-func Split(text string) []Chunk {
-	text = strings.ReplaceAll(text, "\r\n", "\n")
-
+// SplitSections chunks extracted sections for indexing. Structure decides
+// the boundaries: chunks never cross a section (page, heading scope), and
+// within a section paragraphs pack together up to the budget. Consecutive
+// chunks overlap so a fact straddling a boundary is findable in both.
+func SplitSections(sections []Section) []Chunk {
 	var chunks []Chunk
-	emit := func(s string) {
-		s = strings.TrimSpace(s)
-		if s != "" {
-			chunks = append(chunks, Chunk{Seq: len(chunks), Text: s})
+	emit := func(text string, page int) {
+		text = strings.TrimSpace(text)
+		if text != "" {
+			chunks = append(chunks, Chunk{Seq: len(chunks), Page: page, Text: text})
 		}
 	}
 
-	var buf strings.Builder
-	for _, para := range strings.Split(text, "\n\n") {
-		para = strings.TrimSpace(para)
-		if para == "" {
-			continue
-		}
+	for _, sec := range sections {
+		text := strings.ReplaceAll(sec.Text, "\r\n", "\n")
 
-		if len(para) > maxChunkLen {
-			emit(buf.String())
-			buf.Reset()
-			for len(para) > maxChunkLen {
-				cut := strings.LastIndexByte(para[:maxChunkLen], ' ')
-				if cut <= 0 {
-					cut = maxChunkLen
-				}
-				emit(para[:cut])
-				para = strings.TrimSpace(para[cut:])
+		var buf strings.Builder
+		for _, para := range strings.Split(text, "\n\n") {
+			para = strings.TrimSpace(para)
+			if para == "" {
+				continue
 			}
-			emit(para)
-			continue
-		}
 
-		if buf.Len()+len(para)+2 > maxChunkLen {
-			emit(buf.String())
-			buf.Reset()
+			if len(para) > chunkBudget {
+				emit(buf.String(), sec.Page)
+				buf.Reset()
+				for _, piece := range hardSplit(para) {
+					emit(piece, sec.Page)
+				}
+				continue
+			}
+
+			if buf.Len()+len(para)+2 > chunkBudget {
+				tail := overlapTail(buf.String())
+				emit(buf.String(), sec.Page)
+				buf.Reset()
+				if tail != "" {
+					buf.WriteString(tail)
+					buf.WriteString("\n\n")
+				}
+			}
+			buf.WriteString(para)
+			buf.WriteString("\n\n")
 		}
-		buf.WriteString(para)
-		buf.WriteString("\n\n")
+		emit(buf.String(), sec.Page)
 	}
-	emit(buf.String())
-
 	return chunks
+}
+
+// hardSplit cuts an oversized paragraph at word boundaries, each piece
+// starting with the tail of the previous one as overlap.
+func hardSplit(para string) []string {
+	var pieces []string
+	for len(para) > chunkBudget {
+		cut := strings.LastIndexByte(para[:chunkBudget], ' ')
+		if cut <= 0 {
+			cut = chunkBudget
+		}
+		pieces = append(pieces, para[:cut])
+		rest := strings.TrimSpace(para[cut:])
+		if tail := overlapTail(para[:cut]); tail != "" {
+			rest = tail + " " + rest
+		}
+		para = rest
+	}
+	if strings.TrimSpace(para) != "" {
+		pieces = append(pieces, para)
+	}
+	return pieces
+}
+
+// overlapTail returns the last ~chunkOverlap bytes of s, cut at a word
+// boundary. It is what consecutive chunks share.
+func overlapTail(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) <= chunkOverlap {
+		return ""
+	}
+	tail := s[len(s)-chunkOverlap:]
+	if sp := strings.IndexByte(tail, ' '); sp >= 0 {
+		tail = tail[sp+1:]
+	}
+	return strings.TrimSpace(tail)
 }

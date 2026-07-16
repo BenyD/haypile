@@ -41,7 +41,7 @@ func newSearchCmd() *cobra.Command {
 				return nil
 			}
 			for i, r := range results {
-				fmt.Fprintf(out, "%2d. %s · chunk %d\n    %s\n", i+1, r.Path, r.Seq+1, r.Snippet)
+				fmt.Fprintf(out, "%2d. %s\n    %s\n", i+1, citation(r), r.Snippet)
 			}
 			return nil
 		},
@@ -50,4 +50,14 @@ func newSearchCmd() *cobra.Command {
 	cmd.Flags().StringVar(&tag, "tag", "", "restrict search to folders indexed with this tag")
 	cmd.Flags().IntVar(&limit, "limit", 10, "maximum number of results")
 	return cmd
+}
+
+// citation renders "where this came from": file plus page for paginated
+// formats, file plus chunk position otherwise. Citations are non-negotiable
+// output — every result must be traceable to its source.
+func citation(r index.Result) string {
+	if r.Page > 0 {
+		return fmt.Sprintf("%s · page %d", r.Path, r.Page)
+	}
+	return fmt.Sprintf("%s · chunk %d", r.Path, r.Seq+1)
 }

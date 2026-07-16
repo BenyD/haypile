@@ -108,6 +108,54 @@ func TestAddSearchListRemoveEndToEnd(t *testing.T) {
 	}
 }
 
+// TestPDFCitationsEndToEnd is M2's definition of done as a test: search a
+// folder of PDFs, results cite file and page.
+func TestPDFCitationsEndToEnd(t *testing.T) {
+	t.Setenv("HAYPILE_DIR", t.TempDir())
+
+	docs := t.TempDir()
+	pdf, err := os.ReadFile("../ingest/testdata/contract.pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docs, "contract.pdf"), pdf, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	docx, err := os.ReadFile("../ingest/testdata/contract.docx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docs, "deal.docx"), docx, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := run(t, "add", docs)
+	if err != nil {
+		t.Fatalf("add: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Indexed 2 files") {
+		t.Errorf("add output unexpected:\n%s", out)
+	}
+
+	// The case number lives on page 2 of the PDF.
+	out, err = run(t, "search", "2024-CV-01847")
+	if err != nil {
+		t.Fatalf("search: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "contract.pdf · page 2") {
+		t.Errorf("PDF result must cite file and page:\n%s", out)
+	}
+
+	// The docx cites file + chunk (no static pages in Word documents).
+	out, err = run(t, "search", "certified mail")
+	if err != nil {
+		t.Fatalf("search: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "deal.docx · chunk") {
+		t.Errorf("docx result must cite the file:\n%s", out)
+	}
+}
+
 // TestSemanticEndToEnd drives the whole env-configured semantic path: a
 // fake OpenAI-compatible endpoint, hay add embedding chunks through it, and
 // a paraphrase query that keyword search alone cannot answer.

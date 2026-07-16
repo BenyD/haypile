@@ -27,8 +27,8 @@ func TestVectorRoundTripAndSearch(t *testing.T) {
 	st := openTestStore(t)
 
 	srcID, _ := st.AddSource("/docs", "")
-	st.UpsertFile(srcID, "/docs/a.md", "s1", 1, 1, []string{"contract termination text", "payment text"})
-	st.UpsertFile(srcID, "/docs/b.md", "s2", 1, 1, []string{"kitchen renovation text"})
+	st.UpsertFile(srcID, "/docs/a.md", "s1", 1, 1, chunksOf("contract termination text", "payment text"))
+	st.UpsertFile(srcID, "/docs/b.md", "s2", 1, 1, chunksOf("kitchen renovation text"))
 
 	missing, err := st.MissingEmbeddings(srcID)
 	if err != nil || len(missing) != 3 {
@@ -62,13 +62,13 @@ func TestCacheSurvivesChunkDeletion(t *testing.T) {
 	st := openTestStore(t)
 
 	srcID, _ := st.AddSource("/docs", "")
-	st.UpsertFile(srcID, "/docs/a.md", "v1", 1, 1, []string{"stable paragraph"})
+	st.UpsertFile(srcID, "/docs/a.md", "v1", 1, 1, chunksOf("stable paragraph"))
 	missing, _ := st.MissingEmbeddings(srcID)
 	st.PutEmbedding(missing[0].ID, "sha-stable", "m", []float32{1, 0})
 
 	// Re-index the file (new chunk ids). The chunk vector is gone but the
 	// content cache must survive — same text is never embedded twice.
-	st.UpsertFile(srcID, "/docs/a.md", "v2", 1, 2, []string{"stable paragraph", "new paragraph"})
+	st.UpsertFile(srcID, "/docs/a.md", "v2", 1, 2, chunksOf("stable paragraph", "new paragraph"))
 
 	if missing, _ = st.MissingEmbeddings(srcID); len(missing) != 2 {
 		t.Fatalf("expected 2 missing after re-index, got %d", len(missing))
@@ -91,8 +91,8 @@ func TestVectorSearchRespectsTags(t *testing.T) {
 
 	workID, _ := st.AddSource("/work", "work")
 	homeID, _ := st.AddSource("/home", "home")
-	st.UpsertFile(workID, "/work/a.md", "s1", 1, 1, []string{"work text"})
-	st.UpsertFile(homeID, "/home/b.md", "s2", 1, 1, []string{"home text"})
+	st.UpsertFile(workID, "/work/a.md", "s1", 1, 1, chunksOf("work text"))
+	st.UpsertFile(homeID, "/home/b.md", "s2", 1, 1, chunksOf("home text"))
 
 	for _, src := range []int64{workID, homeID} {
 		missing, _ := st.MissingEmbeddings(src)

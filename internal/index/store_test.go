@@ -23,10 +23,10 @@ func TestSearchFindsIndexedChunks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddSource: %v", err)
 	}
-	err = st.UpsertFile(srcID, "/docs/contract.md", "sha1", 100, 1, []string{
+	err = st.UpsertFile(srcID, "/docs/contract.md", "sha1", 100, 1, chunksOf(
 		"Either party may terminate this agreement with sixty days written notice.",
 		"Payment is due within forty-five days of invoice.",
-	})
+	))
 	if err != nil {
 		t.Fatalf("UpsertFile: %v", err)
 	}
@@ -50,8 +50,8 @@ func TestUpsertReplacesChunks(t *testing.T) {
 	st := openTestStore(t)
 
 	srcID, _ := st.AddSource("/docs", "")
-	st.UpsertFile(srcID, "/docs/a.md", "v1", 10, 1, []string{"old content about zebras"})
-	st.UpsertFile(srcID, "/docs/a.md", "v2", 12, 2, []string{"new content about llamas"})
+	st.UpsertFile(srcID, "/docs/a.md", "v1", 10, 1, chunksOf("old content about zebras"))
+	st.UpsertFile(srcID, "/docs/a.md", "v2", 12, 2, chunksOf("new content about llamas"))
 
 	if r, _ := st.Search("zebras", "", 10); len(r) != 0 {
 		t.Errorf("stale chunk still searchable after upsert")
@@ -68,7 +68,7 @@ func TestFileSHARoundTrip(t *testing.T) {
 		t.Errorf("unknown file returned sha %q", sha)
 	}
 	srcID, _ := st.AddSource("/docs", "")
-	st.UpsertFile(srcID, "/docs/a.md", "abc123", 10, 1, []string{"text"})
+	st.UpsertFile(srcID, "/docs/a.md", "abc123", 10, 1, chunksOf("text"))
 	if sha, _ := st.FileSHA("/docs/a.md"); sha != "abc123" {
 		t.Errorf("got sha %q, want abc123", sha)
 	}
@@ -78,7 +78,7 @@ func TestRemoveSourceCascades(t *testing.T) {
 	st := openTestStore(t)
 
 	srcID, _ := st.AddSource("/docs", "")
-	st.UpsertFile(srcID, "/docs/a.md", "v1", 10, 1, []string{"searchable pelican text"})
+	st.UpsertFile(srcID, "/docs/a.md", "v1", 10, 1, chunksOf("searchable pelican text"))
 
 	found, err := st.RemoveSource("/docs")
 	if err != nil || !found {
@@ -101,8 +101,8 @@ func TestTagFiltering(t *testing.T) {
 
 	workID, _ := st.AddSource("/work", "work")
 	homeID, _ := st.AddSource("/home", "home")
-	st.UpsertFile(workID, "/work/a.md", "s1", 1, 1, []string{"quarterly heron report"})
-	st.UpsertFile(homeID, "/home/b.md", "s2", 1, 1, []string{"heron watching notes"})
+	st.UpsertFile(workID, "/work/a.md", "s1", 1, 1, chunksOf("quarterly heron report"))
+	st.UpsertFile(homeID, "/home/b.md", "s2", 1, 1, chunksOf("heron watching notes"))
 
 	if r, _ := st.Search("heron", "", 10); len(r) != 2 {
 		t.Errorf("untagged search: got %d results, want 2", len(r))
@@ -116,7 +116,7 @@ func TestTagFiltering(t *testing.T) {
 func TestQuerySyntaxCannotBreakSearch(t *testing.T) {
 	st := openTestStore(t)
 	srcID, _ := st.AddSource("/docs", "")
-	st.UpsertFile(srcID, "/docs/a.md", "s", 1, 1, []string{"plain text"})
+	st.UpsertFile(srcID, "/docs/a.md", "s", 1, 1, chunksOf("plain text"))
 
 	// FTS5 operators and syntax in user input must be treated as literals,
 	// never parsed — a search box that errors on quotes is broken.

@@ -21,6 +21,7 @@ const embedBatch = 64
 type Stats struct {
 	Indexed  int // files (re)indexed this pass
 	Skipped  int // files already indexed and unchanged
+	Failed   int // files whose extraction failed (indexing continues)
 	Chunks   int // chunks written this pass
 	Embedded int // vectors computed this pass (cache hits excluded)
 }
@@ -88,17 +89,24 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 		if err != nil {
 			return err
 		}
-		chunks := Split(string(data))
-		texts := make([]string, len(chunks))
-		for i, c := range chunks {
-			texts[i] = c.Text
+		sections, err := Extract(path)
+		if err != nil {
+			// One unreadable document must not abort the pass; count it
+			// and keep indexing.
+			stats.Failed++
+			return nil
 		}
-		if err := st.UpsertFile(sourceID, path, sha, fi.Size(), fi.ModTime().Unix(), texts); err != nil {
+		chunks := SplitSections(sections)
+		dbChunks := make([]index.Chunk, len(chunks))
+		for i, c := range chunks {
+			dbChunks[i] = index.Chunk{Text: c.Text, Page: c.Page}
+		}
+		if err := st.UpsertFile(sourceID, path, sha, fi.Size(), fi.ModTime().Unix(), dbChunks); err != nil {
 			return err
 		}
 
 		stats.Indexed++
-		stats.Chunks += len(texts)
+		stats.Chunks += len(chunks)
 		if progress != nil {
 			progress(path)
 		}

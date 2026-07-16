@@ -41,9 +41,9 @@ func setup(t *testing.T) (*index.Store, *fakeEmbedder) {
 
 	srcID, _ := st.AddSource("/docs", "")
 	st.UpsertFile(srcID, "/docs/contract.md", "s1", 1, 1,
-		[]string{"Either party may terminate this agreement with sixty days notice."})
+		chunksOf("Either party may terminate this agreement with sixty days notice."))
 	st.UpsertFile(srcID, "/docs/kitchen.md", "s2", 1, 1,
-		[]string{"Going with white oak cabinets for the renovation."})
+		chunksOf("Going with white oak cabinets for the renovation."))
 
 	fake := &fakeEmbedder{vectors: map[string][]float32{
 		// The semantic case: query shares no words with the contract chunk
@@ -128,4 +128,13 @@ func TestFuseRewardsAgreement(t *testing.T) {
 		got := []string{fusedList[0].Path, fusedList[1].Path, fusedList[2].Path}
 		t.Fatalf("agreement should rank first, got order %v", got)
 	}
+}
+
+// chunksOf wraps plain texts as pageless index.Chunks.
+func chunksOf(texts ...string) []index.Chunk {
+	out := make([]index.Chunk, len(texts))
+	for i, t := range texts {
+		out[i] = index.Chunk{Text: t}
+	}
+	return out
 }

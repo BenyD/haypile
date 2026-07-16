@@ -112,7 +112,7 @@ func (s *Store) PutEmbedding(chunkID int64, sha, model string, vec []float32) er
 // scale, and an ANN index is a v2 concern.
 func (s *Store) VectorSearch(query []float32, tag string, limit int) ([]Result, error) {
 	rows, err := s.db.Query(`
-		SELECT f.path, c.seq, c.text, e.vector
+		SELECT f.path, c.seq, c.page, c.text, e.vector
 		FROM embeddings e
 		JOIN chunks c ON c.id = e.chunk_id
 		JOIN files f ON f.id = c.file_id
@@ -128,7 +128,7 @@ func (s *Store) VectorSearch(query []float32, tag string, limit int) ([]Result, 
 		var r Result
 		var text string
 		var blob []byte
-		if err := rows.Scan(&r.Path, &r.Seq, &text, &blob); err != nil {
+		if err := rows.Scan(&r.Path, &r.Seq, &r.Page, &text, &blob); err != nil {
 			return nil, err
 		}
 		r.Score = float64(dot(query, blobToVec(blob)))

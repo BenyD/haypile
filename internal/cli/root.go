@@ -28,6 +28,7 @@ func newRootCmd() *cobra.Command {
 		newRemoveCmd(),
 		newStatusCmd(),
 		newServeCmd(),
+		newMCPStdioCmd(),
 	)
 	return root
 }

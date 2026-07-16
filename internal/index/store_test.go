@@ -113,6 +113,25 @@ func TestTagFiltering(t *testing.T) {
 	}
 }
 
+// TestSearchAny: the recall variant matches any word and ranks overlap.
+func TestSearchAny(t *testing.T) {
+	st := openTestStore(t)
+	srcID, _ := st.AddSource("/docs", "")
+	st.UpsertFile(srcID, "/docs/a.md", "s", 1, 1, chunksOf("sixty days written notice to terminate"))
+
+	// Strict search misses the question form; SearchAny catches it.
+	if results, _ := st.Search("how many days of notice?", "", 10); len(results) != 0 {
+		t.Fatalf("strict Search should demand every word: %v", results)
+	}
+	results, err := st.SearchAny("how many days of notice?", "", 10)
+	if err != nil || len(results) != 1 {
+		t.Fatalf("SearchAny should find partial matches: %v, %v", results, err)
+	}
+	if results, err := st.SearchAny("zeppelin", "", 10); err != nil || len(results) != 0 {
+		t.Fatalf("no-hit word must return empty, not error: %v, %v", results, err)
+	}
+}
+
 func TestQuerySyntaxCannotBreakSearch(t *testing.T) {
 	st := openTestStore(t)
 	srcID, _ := st.AddSource("/docs", "")

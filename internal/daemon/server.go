@@ -117,6 +117,11 @@ func (s *Server) routes() http.Handler {
 	r.Get("/api/sources", s.handleSources)
 	r.Post("/api/sources", s.handleAddSource)
 	r.Delete("/api/sources", s.handleRemoveSource)
+	r.Post("/mcp", s.handleMCP)
+	r.Get("/mcp", func(w http.ResponseWriter, r *http.Request) {
+		// No server-initiated streams: this server only answers requests.
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
 	return r
 }
 

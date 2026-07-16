@@ -54,6 +54,40 @@ Everything lives in a single SQLite database on your disk, and search is fully s
 
 Full product spec: [docs/PRD.md](docs/PRD.md).
 
+## Ask questions (bring your own LLM)
+
+`hay ask` retrieves the most relevant passages and has a local LLM answer
+from them, with citations:
+
+```sh
+hay ask "what did the Meridian contract say about termination?"
+```
+
+Generation uses any OpenAI-compatible server you already run — Ollama,
+LM Studio, llama.cpp, Jan — auto-detected on their usual ports, or set
+explicitly with `--endpoint http://localhost:11434/v1` and `--model llama3.2`.
+Without one, `hay ask` explains and shows the top passages instead. Search
+never needs an LLM.
+
+## Use from Claude Code, Cursor, or your own tools
+
+The daemon exposes MCP (Streamable HTTP) and REST on `localhost:11500`:
+
+```sh
+# Claude Code
+claude mcp add --transport http haypile http://localhost:11500/mcp
+
+# Anything that prefers launching a process (stdio transport)
+#   command: hay   args: ["mcp-stdio"]
+
+# Plain REST
+curl -X POST localhost:11500/api/query -d '{"query": "termination clause"}'
+```
+
+Tools exposed: `search_documents` (hybrid search with citations) and
+`list_sources`. The daemon starts automatically on `hay add` and only ever
+listens on localhost.
+
 ## Development
 
 ```sh

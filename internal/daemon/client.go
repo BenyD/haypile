@@ -78,6 +78,9 @@ func AutoStart() (*Client, error) {
 	return nil, nil // slow start: caller proceeds direct, daemon catches up
 }
 
+// MCPURL is the daemon's Streamable HTTP MCP endpoint.
+func (c *Client) MCPURL() string { return c.base + "/mcp" }
+
 func (c *Client) health() (Health, error) {
 	var h Health
 	// Health must answer fast even when the daemon is busy indexing.

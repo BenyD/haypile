@@ -177,6 +177,67 @@ func TestDaemonRejectsBadRequests(t *testing.T) {
 	}
 }
 
+// TestMCPRoundTrip drives the daemon's MCP endpoint the way an editor
+// would: initialize, list tools, call search, and read cited passages.
+func TestMCPRoundTrip(t *testing.T) {
+	c := startDaemon(t)
+
+	docs := t.TempDir()
+	writeDoc(t, docs, "contract.md", "# Deal\n\nThe indemnity cap is two million dollars.")
+	if _, err := c.AddSource(docs, ""); err != nil {
+		t.Fatalf("AddSource: %v", err)
+	}
+
+	rpc := func(body string) map[string]any {
+		t.Helper()
+		resp, err := http.Post(c.MCPURL(), "application/json", bytes.NewReader([]byte(body)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusAccepted {
+			return nil
+		}
+		var out map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return out
+	}
+
+	init := rpc(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}`)
+	result, _ := init["result"].(map[string]any)
+	if result == nil || result["serverInfo"].(map[string]any)["name"] != "haypile" {
+		t.Fatalf("initialize = %v", init)
+	}
+	if got := rpc(`{"jsonrpc":"2.0","method":"notifications/initialized"}`); got != nil {
+		t.Fatalf("notification must return no body, got %v", got)
+	}
+
+	list := rpc(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
+	tools := list["result"].(map[string]any)["tools"].([]any)
+	if len(tools) != 2 {
+		t.Fatalf("tools/list returned %d tools, want 2", len(tools))
+	}
+
+	call := rpc(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search_documents","arguments":{"query":"indemnity cap"}}}`)
+	content := call["result"].(map[string]any)["content"].([]any)
+	text := content[0].(map[string]any)["text"].(string)
+	if !strings.Contains(text, "contract.md") || !strings.Contains(text, "two million") {
+		t.Fatalf("search_documents content unexpected:\n%s", text)
+	}
+
+	bad := rpc(`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"search_documents","arguments":{}}}`)
+	if isErr, _ := bad["result"].(map[string]any)["isError"].(bool); !isErr {
+		t.Fatalf("empty query must be a tool error, got %v", bad)
+	}
+
+	unknown := rpc(`{"jsonrpc":"2.0","id":5,"method":"no/such"}`)
+	if unknown["error"] == nil {
+		t.Fatalf("unknown method must be a JSON-RPC error, got %v", unknown)
+	}
+}
+
 func TestDiscoverRejectsWrongDatabase(t *testing.T) {
 	c := startDaemon(t)
 	if c == nil {

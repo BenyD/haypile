@@ -323,15 +323,30 @@ type Result struct {
 	Score   float64
 }
 
-// Search runs a ranked FTS5 keyword query. tag narrows results to sources
-// indexed with that tag; empty tag searches everything. Hybrid semantic
-// search joins this path at M1.
+// Search runs a ranked FTS5 keyword query; every word must match. tag
+// narrows results to sources indexed with that tag; empty tag searches
+// everything.
 func (s *Store) Search(query, tag string, limit int) ([]Result, error) {
-	fts := ftsQuery(query)
-	if fts == "" {
+	words := ftsWords(query)
+	if len(words) == 0 {
 		return nil, errors.New("empty query")
 	}
+	return s.searchFTS(strings.Join(words, " "), tag, limit)
+}
 
+// SearchAny is the recall variant: any word may match, BM25 ranks the
+// best overlap on top. Hybrid search uses it only when there is no
+// semantic leg to catch paraphrases — as a fusion input its one-word
+// matches would dilute good vector rankings.
+func (s *Store) SearchAny(query, tag string, limit int) ([]Result, error) {
+	words := ftsWords(query)
+	if len(words) == 0 {
+		return nil, errors.New("empty query")
+	}
+	return s.searchFTS(strings.Join(words, " OR "), tag, limit)
+}
+
+func (s *Store) searchFTS(fts, tag string, limit int) ([]Result, error) {
 	rows, err := s.db.Query(`
 		SELECT f.path, c.seq, c.page, snippet(chunks_fts, 0, '', '', ' … ', 16), -bm25(chunks_fts)
 		FROM chunks_fts
@@ -357,13 +372,13 @@ func (s *Store) Search(query, tag string, limit int) ([]Result, error) {
 	return out, rows.Err()
 }
 
-// ftsQuery converts free text into a safe FTS5 query: each word becomes a
-// quoted token (implicit AND), so user input can never be misparsed as FTS5
-// syntax like NEAR, AND, or column filters.
-func ftsQuery(q string) string {
+// ftsWords converts free text into safe FTS5 tokens: each word is quoted,
+// so user input can never be misparsed as FTS5 syntax like NEAR, AND, or
+// column filters.
+func ftsWords(q string) []string {
 	words := strings.Fields(q)
 	for i, w := range words {
 		words[i] = `"` + strings.ReplaceAll(w, `"`, `""`) + `"`
 	}
-	return strings.Join(words, " ")
+	return words
 }

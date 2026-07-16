@@ -7,6 +7,7 @@ package query
 import (
 	"context"
 	"sort"
+	"strings"
 
 	"github.com/BenyD/haypile/internal/embed"
 	"github.com/BenyD/haypile/internal/index"
@@ -25,11 +26,23 @@ func Hybrid(ctx context.Context, st *index.Store, emb embed.Embedder, q, tag str
 	if err != nil {
 		return nil, err
 	}
-	if emb == nil {
+	// keywordOnly: no semantic leg to catch paraphrases, so when strict
+	// AND matching finds nothing, retry with OR — partial word overlap
+	// beats an empty answer, and BM25 ranks the best overlap on top.
+	keywordOnly := func() ([]index.Result, error) {
+		if len(keyword) == 0 && len(strings.Fields(q)) > 1 {
+			return st.SearchAny(q, tag, limit)
+		}
 		return keyword, nil
 	}
+	if emb == nil {
+		return keywordOnly()
+	}
 	if model, err := st.EmbedModel(); err != nil || model != emb.Model() {
-		return keyword, err
+		if err != nil {
+			return nil, err
+		}
+		return keywordOnly()
 	}
 
 	qvecs, err := emb.Embed(ctx, []string{q})

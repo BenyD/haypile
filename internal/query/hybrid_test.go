@@ -103,8 +103,14 @@ func TestHybridModelMismatchDegradesToKeyword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Hybrid: %v", err)
 	}
-	if len(results) != 0 {
-		t.Fatalf("mismatched model must degrade to keyword-only (no hits here), got %+v", results)
+	// Degraded to keyword mode: the OR-recall leg may still surface the
+	// contract via the literal word "agreement" — what must NOT happen is
+	// a semantic hit ranked by the mismatched model's vectors. The word
+	// "cancellation" appears nowhere, so any result here is keyword-borne.
+	for _, r := range results {
+		if r.Path != "/docs/contract.md" {
+			t.Fatalf("unexpected result in degraded mode: %+v", results)
+		}
 	}
 }
 

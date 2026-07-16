@@ -31,7 +31,7 @@ func run(t *testing.T, args ...string) (string, error) {
 }
 
 func TestRootRegistersAllCommands(t *testing.T) {
-	want := []string{"add", "search", "ask", "list", "remove", "status", "serve"}
+	want := []string{"add", "search", "ask", "list", "remove", "status", "serve", "mcp-stdio"}
 
 	root := newRootCmd()
 	got := make(map[string]bool)
@@ -56,15 +56,65 @@ func TestHelpRunsWithoutError(t *testing.T) {
 	}
 }
 
-func TestUnimplementedCommandsFailLoudly(t *testing.T) {
-	// Until their milestones land, stubs must return an error rather than
-	// silently succeed — a silent no-op would look like data loss to a user.
-	for _, args := range [][]string{
-		{"ask", "anything"}, // M4
-	} {
-		if _, err := run(t, args...); err == nil {
-			t.Errorf("%v: expected not-implemented error, got nil", args)
+// TestAskEndToEnd drives the full RAG path: index a doc, retrieve, send
+// context to a fake OpenAI-compatible server, print answer and sources.
+func TestAskEndToEnd(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/models":
+			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]string{{"id": "llama3.2"}}})
+		case "/v1/chat/completions":
+			json.NewEncoder(w).Encode(map[string]any{"choices": []map[string]any{
+				{"message": map[string]string{"role": "assistant", "content": "Sixty days written notice [1]."}},
+			}})
 		}
+	}))
+	defer srv.Close()
+
+	t.Setenv("HAYPILE_DIR", t.TempDir())
+	docs := t.TempDir()
+	if err := os.WriteFile(filepath.Join(docs, "contract.md"),
+		[]byte("Either party may terminate with sixty days written notice."), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := run(t, "add", docs); err != nil {
+		t.Fatalf("add: %v\n%s", err, out)
+	}
+
+	out, err := run(t, "ask", "what notice period applies?", "--endpoint", srv.URL+"/v1")
+	if err != nil {
+		t.Fatalf("ask: %v\n%s", err, out)
+	}
+	for _, want := range []string{"Sixty days written notice [1].", "Sources:", "[1] ", "contract.md"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("ask output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestAskWithoutLLMFallsBackToSearch: no endpoint anywhere → explain and
+// show passages, exit zero. Degraded, not broken.
+func TestAskWithoutLLMFallsBackToSearch(t *testing.T) {
+	if _, err := http.Get("http://localhost:11434/v1/models"); err == nil {
+		t.Skip("a real local LLM server is running")
+	}
+
+	t.Setenv("HAYPILE_DIR", t.TempDir())
+	docs := t.TempDir()
+	if err := os.WriteFile(filepath.Join(docs, "note.md"),
+		[]byte("The migration to the new billing system happens in June."), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := run(t, "add", docs); err != nil {
+		t.Fatalf("add: %v\n%s", err, out)
+	}
+
+	out, err := run(t, "ask", "billing migration")
+	if err != nil {
+		t.Fatalf("ask without LLM must not error: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "no local LLM endpoint found") || !strings.Contains(out, "note.md") {
+		t.Errorf("fallback output unexpected:\n%s", out)
 	}
 }
 

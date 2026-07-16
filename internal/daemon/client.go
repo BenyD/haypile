@@ -60,7 +60,7 @@ func AutoStart() (*Client, error) {
 	cmd := exec.Command(exe, "serve")
 	cmd.Stdout = nil
 	cmd.Stderr = nil
-	detach(cmd)
+	Detach(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("auto-starting daemon: %w", err)
 	}

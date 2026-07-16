@@ -30,7 +30,7 @@ var wellKnownEndpoints = []struct{ url, name string }{
 // search with an explanation — never a hard failure.
 var ErrNoEndpoint = errors.New(
 	"no local LLM endpoint found (tried Ollama :11434, LM Studio :1234, llama.cpp :8080, Jan :1337);\n" +
-		"start one, or point hay at it: hay ask --endpoint http://localhost:PORT/v1")
+		"run `hay llm setup` to get one going, or point hay at yours: hay ask --endpoint http://localhost:PORT/v1")
 
 // Client talks to one chat-completions endpoint.
 type Client struct {
@@ -73,6 +73,23 @@ func Detect(ctx context.Context, endpoint, model string) (*Client, error) {
 		}
 	}
 	return nil, ErrNoEndpoint
+}
+
+// Ping reports whether an OpenAI-compatible server answers at baseURL.
+// It distinguishes "server down" from "server up but no chat model" —
+// two states that need different fixes.
+func Ping(ctx context.Context, baseURL string) bool {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		strings.TrimRight(baseURL, "/")+"/models", nil)
+	if err != nil {
+		return false
+	}
+	resp, err := (&http.Client{}).Do(req)
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
 }
 
 func newClient(baseURL, model string) *Client {

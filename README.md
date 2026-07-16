@@ -69,6 +69,12 @@ explicitly with `--endpoint http://localhost:11434/v1` and `--model llama3.2`.
 Without one, `hay ask` explains and shows the top passages instead. Search
 never needs an LLM.
 
+Don't have a local LLM yet? One guided command gets you there:
+
+```sh
+hay llm setup    # installs/starts Ollama and pulls a model — asks before every download
+```
+
 ## Use from Claude Code, Cursor, or your own tools
 
 The daemon exposes MCP (Streamable HTTP) and REST on `localhost:11500`:

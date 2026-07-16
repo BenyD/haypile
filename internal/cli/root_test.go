@@ -31,7 +31,7 @@ func run(t *testing.T, args ...string) (string, error) {
 }
 
 func TestRootRegistersAllCommands(t *testing.T) {
-	want := []string{"add", "search", "ask", "list", "remove", "status", "serve", "mcp-stdio"}
+	want := []string{"add", "search", "ask", "list", "remove", "status", "serve", "mcp-stdio", "llm"}
 
 	root := newRootCmd()
 	got := make(map[string]bool)

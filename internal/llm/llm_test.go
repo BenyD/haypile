@@ -86,6 +86,17 @@ func TestDetectErrorsWhenOnlyEmbeddingModels(t *testing.T) {
 	}
 }
 
+func TestPing(t *testing.T) {
+	srv := fakeLLM(t, []string{"llama3.2"}, "", nil)
+	if !Ping(context.Background(), srv.URL+"/v1") {
+		t.Error("Ping must be true for a live server")
+	}
+	srv.Close()
+	if Ping(context.Background(), srv.URL+"/v1") {
+		t.Error("Ping must be false for a closed server")
+	}
+}
+
 func TestAnswerBuildsCitedPrompt(t *testing.T) {
 	var prompt string
 	srv := fakeLLM(t, []string{"llama3.2"}, "Sixty days notice is required [1].", &prompt)

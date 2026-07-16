@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/BenyD/haypile/internal/daemon"
 	"github.com/BenyD/haypile/internal/index"
 )
 
@@ -20,15 +21,21 @@ func newRemoveCmd() *cobra.Command {
 				return err
 			}
 
-			st, err := index.Open(index.DefaultPath())
-			if err != nil {
-				return err
-			}
-			defer st.Close()
-
-			found, err := st.RemoveSource(abs)
-			if err != nil {
-				return err
+			// Through the daemon when running, so it stops watching too.
+			var found bool
+			if c := daemon.Discover(); c != nil {
+				if found, err = c.RemoveSource(abs); err != nil {
+					return err
+				}
+			} else {
+				st, err := index.Open(index.DefaultPath())
+				if err != nil {
+					return err
+				}
+				defer st.Close()
+				if found, err = st.RemoveSource(abs); err != nil {
+					return err
+				}
 			}
 			if !found {
 				return fmt.Errorf("%s is not indexed (see: hay list)", abs)

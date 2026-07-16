@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/BenyD/haypile/internal/daemon"
 	"github.com/BenyD/haypile/internal/embed"
 	"github.com/BenyD/haypile/internal/index"
 	"github.com/BenyD/haypile/internal/query"
@@ -19,20 +20,27 @@ func newSearchCmd() *cobra.Command {
 		Short: "Search indexed documents, results with citations",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			emb, err := embed.FromEnv()
-			if err != nil {
-				return err
-			}
-
-			st, err := index.Open(index.DefaultPath())
-			if err != nil {
-				return err
-			}
-			defer st.Close()
-
-			results, err := query.Hybrid(cmd.Context(), st, emb, args[0], tag, limit)
-			if err != nil {
-				return err
+			// A running daemon answers faster (model already loaded) and
+			// fresher (watcher applied); otherwise search directly.
+			var results []index.Result
+			if c := daemon.Discover(); c != nil {
+				var err error
+				if results, err = c.Query(args[0], tag, limit); err != nil {
+					return err
+				}
+			} else {
+				emb, err := embed.FromEnv()
+				if err != nil {
+					return err
+				}
+				st, err := index.Open(index.DefaultPath())
+				if err != nil {
+					return err
+				}
+				defer st.Close()
+				if results, err = query.Hybrid(cmd.Context(), st, emb, args[0], tag, limit); err != nil {
+					return err
+				}
 			}
 
 			out := cmd.OutOrStdout()

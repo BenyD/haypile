@@ -133,6 +133,26 @@ func (s *Store) AddSource(path, tag string) (int64, error) {
 	return id, err
 }
 
+// SourceID looks up a source by its exact registered path.
+func (s *Store) SourceID(path string) (int64, error) {
+	var id int64
+	err := s.db.QueryRow(`SELECT id FROM sources WHERE path = ?`, path).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("%s is not an indexed source", path)
+	}
+	return id, err
+}
+
+// SourceTag returns the tag a source was registered with.
+func (s *Store) SourceTag(path string) (string, error) {
+	var tag string
+	err := s.db.QueryRow(`SELECT tag FROM sources WHERE path = ?`, path).Scan(&tag)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return tag, err
+}
+
 // SourceInfo summarizes one indexed folder.
 type SourceInfo struct {
 	Path   string

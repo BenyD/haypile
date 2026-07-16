@@ -96,6 +96,17 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 	return stats, embedIfConfigured(st, sourceID, emb, &stats)
 }
 
+// IndexOne brings a single changed file under an existing source up to
+// date — the daemon's watcher calls this per file event instead of
+// re-walking the whole folder.
+func IndexOne(st *index.Store, sourceID int64, path string, emb embed.Embedder) (Stats, error) {
+	var stats Stats
+	if err := indexFile(st, sourceID, path, &stats, nil); err != nil {
+		return stats, err
+	}
+	return stats, embedIfConfigured(st, sourceID, emb, &stats)
+}
+
 // indexFile brings one file up to date in the index. Unreadable or
 // unparseable files are counted, not fatal — one bad document must never
 // abort a pass; only storage errors do.

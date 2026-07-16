@@ -11,6 +11,14 @@ import (
 	"testing"
 )
 
+// TestMain keeps unit tests hermetic: `hay add` must never fork a real
+// daemon out of the test binary. The daemon path itself is covered by the
+// end-to-end smoke test against a built binary.
+func TestMain(m *testing.M) {
+	os.Setenv("HAYPILE_NO_DAEMON", "1")
+	os.Exit(m.Run())
+}
+
 func run(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 	root := newRootCmd()
@@ -52,13 +60,22 @@ func TestUnimplementedCommandsFailLoudly(t *testing.T) {
 	// Until their milestones land, stubs must return an error rather than
 	// silently succeed — a silent no-op would look like data loss to a user.
 	for _, args := range [][]string{
-		{"ask", "anything"},
-		{"status"},
-		{"serve"},
+		{"ask", "anything"}, // M4
 	} {
 		if _, err := run(t, args...); err == nil {
 			t.Errorf("%v: expected not-implemented error, got nil", args)
 		}
+	}
+}
+
+func TestStatusWithoutDaemon(t *testing.T) {
+	t.Setenv("HAYPILE_DIR", t.TempDir())
+	out, err := run(t, "status")
+	if err != nil {
+		t.Fatalf("status: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "not running") {
+		t.Errorf("status without a daemon should say so:\n%s", out)
 	}
 }
 

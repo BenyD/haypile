@@ -3,6 +3,7 @@ package ingest
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func sectionsOf(texts ...string) []Section {
@@ -107,6 +108,21 @@ func TestSplitSectionsPreservesContent(t *testing.T) {
 	for _, phrase := range []string{"termination clause", "sixty days", "net-45"} {
 		if !strings.Contains(joined, phrase) {
 			t.Errorf("phrase %q lost during chunking", phrase)
+		}
+	}
+}
+
+func TestSplitSectionsNeverSplitsRunes(t *testing.T) {
+	// Spaceless CJK prose forces budget cuts; every cut must land on a
+	// rune boundary or chunks carry invalid UTF-8 into the index.
+	cjk := strings.Repeat("深度学习模型可以处理中文文本没有空格", 60) // ~3200 bytes
+	chunks := SplitSections([]Section{{Text: cjk}})
+	if len(chunks) < 2 {
+		t.Fatalf("got %d chunks, want ≥2", len(chunks))
+	}
+	for _, c := range chunks {
+		if !utf8.ValidString(c.Text) {
+			t.Errorf("chunk %d contains invalid UTF-8", c.Seq)
 		}
 	}
 }

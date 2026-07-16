@@ -14,8 +14,8 @@ func newAddCmd() *cobra.Command {
 	var tag string
 
 	cmd := &cobra.Command{
-		Use:   "add <folder>",
-		Short: "Index a folder and watch it for changes",
+		Use:   "add <folder-or-file>",
+		Short: "Index a folder (or a single document) and watch it for changes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			emb, err := embed.FromEnv()

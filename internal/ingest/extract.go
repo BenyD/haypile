@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -30,6 +31,16 @@ var extractors = map[string]func(path string) ([]Section, error){
 func Supported(path string) bool {
 	_, ok := extractors[strings.ToLower(filepath.Ext(path))]
 	return ok
+}
+
+// supportedList names the indexable extensions for error messages.
+func supportedList() string {
+	exts := make([]string, 0, len(extractors))
+	for e := range extractors {
+		exts = append(exts, e)
+	}
+	sort.Strings(exts)
+	return strings.Join(exts, " ")
 }
 
 // Extract pulls the text out of a document as ordered sections.

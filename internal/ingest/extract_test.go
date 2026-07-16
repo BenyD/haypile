@@ -157,6 +157,43 @@ func TestExtractPDFRejectsGarbage(t *testing.T) {
 	}
 }
 
+func TestIndexSingleFile(t *testing.T) {
+	st := openTestStore(t)
+
+	stats, err := IndexFolder(st, "testdata/contract.pdf", "", nil, nil)
+	if err != nil {
+		t.Fatalf("IndexFolder(single file): %v", err)
+	}
+	if stats.Indexed != 1 || stats.Chunks == 0 {
+		t.Fatalf("stats = %+v, want one indexed file with chunks", stats)
+	}
+
+	results, err := st.Search("2024-CV-01847", "", 5)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(results) == 0 || results[0].Page != 2 {
+		t.Fatalf("results = %+v, want the case number cited on page 2", results)
+	}
+
+	// Re-adding the same file must skip, not re-index.
+	stats, err = IndexFolder(st, "testdata/contract.pdf", "", nil, nil)
+	if err != nil || stats.Skipped != 1 {
+		t.Fatalf("re-add: stats = %+v, err = %v; want Skipped 1", stats, err)
+	}
+}
+
+func TestIndexSingleFileUnsupported(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "photo.jpg")
+	if err := os.WriteFile(path, []byte{0xFF, 0xD8}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	st := openTestStore(t)
+	if _, err := IndexFolder(st, path, "", nil, nil); err == nil {
+		t.Fatal("want an error when a named file has an unsupported format")
+	}
+}
+
 // TestIndexFolderSkipsBrokenFiles is the failure-tolerance contract: one
 // unreadable document must not abort the folder pass.
 func TestIndexFolderSkipsBrokenFiles(t *testing.T) {

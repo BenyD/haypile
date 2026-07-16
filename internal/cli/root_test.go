@@ -156,6 +156,40 @@ func TestPDFCitationsEndToEnd(t *testing.T) {
 	}
 }
 
+// TestAddSingleFile: `hay add resume.pdf` indexes just that document.
+func TestAddSingleFile(t *testing.T) {
+	t.Setenv("HAYPILE_DIR", t.TempDir())
+
+	pdf, err := os.ReadFile("../ingest/testdata/contract.pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "solo.pdf")
+	if err := os.WriteFile(path, pdf, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := run(t, "add", path)
+	if err != nil {
+		t.Fatalf("add: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Indexed 1 files") {
+		t.Errorf("add output unexpected:\n%s", out)
+	}
+
+	out, err = run(t, "search", "2024-CV-01847")
+	if err != nil {
+		t.Fatalf("search: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "solo.pdf · page 2") {
+		t.Errorf("single-file add must be searchable with page citation:\n%s", out)
+	}
+
+	if out, err = run(t, "remove", path); err != nil {
+		t.Fatalf("remove: %v\n%s", err, out)
+	}
+}
+
 // TestSemanticEndToEnd drives the whole env-configured semantic path: a
 // fake OpenAI-compatible endpoint, hay add embedding chunks through it, and
 // a paraphrase query that keyword search alone cannot answer.

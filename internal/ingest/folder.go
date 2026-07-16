@@ -43,8 +43,22 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 	if err != nil {
 		return stats, err
 	}
+
+	// A single file is a valid source too: `hay add contract.pdf` should
+	// just work. Unsupported formats error here (the user named this file
+	// deliberately) where a folder walk would silently pass them by.
 	if !info.IsDir() {
-		return stats, fmt.Errorf("%s is not a folder", abs)
+		if !Supported(abs) {
+			return stats, fmt.Errorf("%s: unsupported format (want %s)", abs, supportedList())
+		}
+		sourceID, err := st.AddSource(abs, tag)
+		if err != nil {
+			return stats, err
+		}
+		if err := indexFile(st, sourceID, abs, &stats, progress); err != nil {
+			return stats, err
+		}
+		return stats, embedIfConfigured(st, sourceID, emb, &stats)
 	}
 
 	sourceID, err := st.AddSource(abs, tag)
@@ -67,50 +81,10 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 		if !Supported(path) {
 			return nil
 		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		sum := sha256.Sum256(data)
-		sha := hex.EncodeToString(sum[:])
+		// A file that fails to index is not pruned: its previous version
+		// stays searchable until a readable version appears.
 		seen[path] = true
-
-		stored, err := st.FileSHA(path)
-		if err != nil {
-			return err
-		}
-		if stored == sha {
-			stats.Skipped++
-			return nil
-		}
-
-		fi, err := d.Info()
-		if err != nil {
-			return err
-		}
-		sections, err := Extract(path)
-		if err != nil {
-			// One unreadable document must not abort the pass; count it
-			// and keep indexing.
-			stats.Failed++
-			return nil
-		}
-		chunks := SplitSections(sections)
-		dbChunks := make([]index.Chunk, len(chunks))
-		for i, c := range chunks {
-			dbChunks[i] = index.Chunk{Text: c.Text, Page: c.Page}
-		}
-		if err := st.UpsertFile(sourceID, path, sha, fi.Size(), fi.ModTime().Unix(), dbChunks); err != nil {
-			return err
-		}
-
-		stats.Indexed++
-		stats.Chunks += len(chunks)
-		if progress != nil {
-			progress(path)
-		}
-		return nil
+		return indexFile(st, sourceID, path, &stats, progress)
 	})
 	if err != nil {
 		return stats, err
@@ -119,14 +93,64 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 		return stats, err
 	}
 
-	if emb != nil {
-		embedded, err := embedMissing(st, sourceID, emb)
-		stats.Embedded = embedded
-		if err != nil {
-			return stats, err
-		}
+	return stats, embedIfConfigured(st, sourceID, emb, &stats)
+}
+
+// indexFile brings one file up to date in the index. Unreadable or
+// unparseable files are counted, not fatal — one bad document must never
+// abort a pass; only storage errors do.
+func indexFile(st *index.Store, sourceID int64, path string, stats *Stats, progress func(path string)) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		stats.Failed++
+		return nil
 	}
-	return stats, nil
+	sum := sha256.Sum256(data)
+	sha := hex.EncodeToString(sum[:])
+
+	stored, err := st.FileSHA(path)
+	if err != nil {
+		return err
+	}
+	if stored == sha {
+		stats.Skipped++
+		return nil
+	}
+
+	fi, err := os.Stat(path)
+	if err != nil {
+		stats.Failed++
+		return nil
+	}
+	sections, err := Extract(path)
+	if err != nil {
+		stats.Failed++
+		return nil
+	}
+	chunks := SplitSections(sections)
+	dbChunks := make([]index.Chunk, len(chunks))
+	for i, c := range chunks {
+		dbChunks[i] = index.Chunk{Text: c.Text, Page: c.Page}
+	}
+	if err := st.UpsertFile(sourceID, path, sha, fi.Size(), fi.ModTime().Unix(), dbChunks); err != nil {
+		return err
+	}
+
+	stats.Indexed++
+	stats.Chunks += len(chunks)
+	if progress != nil {
+		progress(path)
+	}
+	return nil
+}
+
+func embedIfConfigured(st *index.Store, sourceID int64, emb embed.Embedder, stats *Stats) error {
+	if emb == nil {
+		return nil
+	}
+	embedded, err := embedMissing(st, sourceID, emb)
+	stats.Embedded = embedded
+	return err
 }
 
 // embedMissing vectorizes every chunk under the source that has no vector

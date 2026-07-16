@@ -67,13 +67,14 @@ func SplitSections(sections []Section) []Chunk {
 }
 
 // hardSplit cuts an oversized paragraph at word boundaries, each piece
-// starting with the tail of the previous one as overlap.
+// starting with the tail of the previous one as overlap. Text without
+// spaces (CJK prose) cuts at the budget, on a rune boundary.
 func hardSplit(para string) []string {
 	var pieces []string
 	for len(para) > chunkBudget {
 		cut := strings.LastIndexByte(para[:chunkBudget], ' ')
 		if cut <= 0 {
-			cut = chunkBudget
+			cut = runeStart(para, chunkBudget)
 		}
 		pieces = append(pieces, para[:cut])
 		rest := strings.TrimSpace(para[cut:])
@@ -89,15 +90,25 @@ func hardSplit(para string) []string {
 }
 
 // overlapTail returns the last ~chunkOverlap bytes of s, cut at a word
-// boundary. It is what consecutive chunks share.
+// boundary (or a rune boundary when there are no spaces). It is what
+// consecutive chunks share.
 func overlapTail(s string) string {
 	s = strings.TrimSpace(s)
 	if len(s) <= chunkOverlap {
 		return ""
 	}
-	tail := s[len(s)-chunkOverlap:]
+	tail := s[runeStart(s, len(s)-chunkOverlap):]
 	if sp := strings.IndexByte(tail, ' '); sp >= 0 {
 		tail = tail[sp+1:]
 	}
 	return strings.TrimSpace(tail)
+}
+
+// runeStart backs i up to the start of the UTF-8 rune it points into, so
+// slicing at i never splits a character.
+func runeStart(s string, i int) int {
+	for i > 0 && s[i]&0xC0 == 0x80 {
+		i--
+	}
+	return i
 }

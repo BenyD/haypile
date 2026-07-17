@@ -1,5 +1,30 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CopyBar, CopyCommand } from '@/components/copy-command';
+
+export const metadata: Metadata = {
+  title: { absolute: 'Haypile: private search and Q&A for your documents' },
+  description:
+    'One binary that watches your folders, indexes every PDF, Word file, and note, and answers questions with citations. Fully local semantic search: no cloud, no Python, no vector database, zero outbound connections.',
+  alternates: { canonical: '/' },
+};
+
+/* Structured data: tells search engines and AI assistants exactly what
+   this is (free, open source, cross-platform desktop software). */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Haypile',
+  applicationCategory: 'UtilitiesApplication',
+  operatingSystem: 'macOS, Linux, Windows',
+  description:
+    'Private search and Q&A for your documents. One binary indexes PDF, Word, Markdown, and text files locally and answers questions with citations. Zero outbound network connections.',
+  url: 'https://haypile.sh',
+  downloadUrl: 'https://github.com/BenyD/haypile/releases',
+  license: 'https://www.gnu.org/licenses/agpl-3.0.html',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  softwareRequirements: 'None. The embedding model is bundled in the binary.',
+};
 
 const features: {
   title: string;
@@ -97,6 +122,10 @@ const features: {
 export default function HomePage() {
   return (
     <main className="flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Hero: headline, command, caption. */}
       <section className="flex flex-col items-center px-4 pb-28 pt-24 text-center sm:pt-32">
         <h1 className="max-w-xl text-4xl font-semibold tracking-tight sm:text-5xl sm:leading-[1.12]">

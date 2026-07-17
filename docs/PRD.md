@@ -6,7 +6,7 @@
 
 ## 1. One-liner
 
-**Haypile is Private search and Q&A for your documents.** A single Go binary that watches your folders, indexes every document, and answers questions about them — fully local, fully private, one command to install.
+**Haypile is private search and Q&A for your documents.** A single Go binary that watches your folders, indexes every document, and answers questions about them — fully local, fully private, one command to install.
 
 > Everyone says finding information in your files is like finding a needle in a haystack. Haypile is the haystack that finds its own needles.
 

@@ -1,6 +1,6 @@
 # Haypile
 
-**Private search and Q&A for your documents.** One binary that watches your folders, indexes every document, and answers questions about them. Fully local, fully private.
+**Private search and Q&A for your documents.** One binary that watches your folders, indexes every document, and answers questions about them with citations. Nothing ever leaves your machine.
 
 > Everyone says finding information in your files is like finding a needle in a haystack. Haypile is the haystack that finds its own needles.
 

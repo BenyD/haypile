@@ -62,7 +62,7 @@ homebrew_casks:
       name: homebrew-tap
       branch: main
     homepage: https://github.com/BenyD/haypile
-    description: "Private search and Q&A for your documents. Local, private search and Q&A over your files."
+    description: "Private search and Q&A for your documents. One binary, fully local."
     license: AGPL-3.0-only
     commit_author:
       name: Beny Dishon K

@@ -146,9 +146,9 @@ func (s *Server) runMCPTool(ctx context.Context, name, q, tag string, limit int)
 		}
 		var b strings.Builder
 		for i, r := range results {
-			cite := fmt.Sprintf("%s · chunk %d", r.Path, r.Seq+1)
+			cite := fmt.Sprintf("%s (chunk %d)", r.Path, r.Seq+1)
 			if r.Page > 0 {
-				cite = fmt.Sprintf("%s · page %d", r.Path, r.Page)
+				cite = fmt.Sprintf("%s (page %d)", r.Path, r.Page)
 			}
 			fmt.Fprintf(&b, "[%d] %s\n%s\n\n", i+1, cite, r.Snippet)
 		}

@@ -105,7 +105,7 @@ func TestDaemonSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("hay search: %v\n%s", err, out)
 	}
-	if !strings.Contains(string(out), "dropped.md · chunk") {
+	if !strings.Contains(string(out), "dropped.md (chunk") {
 		t.Errorf("CLI search lacks citation:\n%s", out)
 	}
 

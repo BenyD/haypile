@@ -65,7 +65,7 @@ func newSearchCmd() *cobra.Command {
 // output — every result must be traceable to its source.
 func citation(r index.Result) string {
 	if r.Page > 0 {
-		return fmt.Sprintf("%s · page %d", r.Path, r.Page)
+		return fmt.Sprintf("%s (page %d)", r.Path, r.Page)
 	}
-	return fmt.Sprintf("%s · chunk %d", r.Path, r.Seq+1)
+	return fmt.Sprintf("%s (chunk %d)", r.Path, r.Seq+1)
 }

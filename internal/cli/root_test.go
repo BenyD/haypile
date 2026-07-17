@@ -209,7 +209,7 @@ func TestPDFCitationsEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "contract.pdf · page 2") {
+	if !strings.Contains(out, "contract.pdf (page 2)") {
 		t.Errorf("PDF result must cite file and page:\n%s", out)
 	}
 
@@ -218,7 +218,7 @@ func TestPDFCitationsEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "deal.docx · chunk") {
+	if !strings.Contains(out, "deal.docx (chunk") {
 		t.Errorf("docx result must cite the file:\n%s", out)
 	}
 }
@@ -248,7 +248,7 @@ func TestAddSingleFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "solo.pdf · page 2") {
+	if !strings.Contains(out, "solo.pdf (page 2)") {
 		t.Errorf("single-file add must be searchable with page citation:\n%s", out)
 	}
 

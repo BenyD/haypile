@@ -135,7 +135,7 @@ func verifyLLM(ctx context.Context, out io.Writer, c *llm.Client) error {
 		return fmt.Errorf("the endpoint answered discovery but not chat: %w", err)
 	}
 	_ = reply // any completed round trip is a pass; models phrase "OK" freely
-	fmt.Fprintf(out, "works.\n\nhay ask is ready (%s · %s). Try:\n", c.BaseURL, c.Model)
+	fmt.Fprintf(out, "works.\n\nhay ask is ready (%s, %s). Try:\n", c.BaseURL, c.Model)
 	fmt.Fprintln(out, `  hay ask "what do my documents say about …?"`)
 	return nil
 }

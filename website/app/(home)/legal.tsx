@@ -1,4 +1,4 @@
-import { LegalToc } from '@/components/legal-toc';
+import { LegalToc, MobileLegalToc } from '@/components/legal-toc';
 
 export type LegalSection = {
   id: string;
@@ -18,7 +18,7 @@ export function LegalPage({
   sections: LegalSection[];
 }) {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-6 pb-24 pt-16">
       <div className="grid gap-12 lg:grid-cols-[220px_1fr]">
         <LegalToc sections={sections.map(({ id, title }) => ({ id, title }))} />
 
@@ -27,6 +27,9 @@ export function LegalPage({
           <p className="mt-2 text-sm text-fd-muted-foreground">
             Last updated: {updated}
           </p>
+          <MobileLegalToc
+            sections={sections.map(({ id, title }) => ({ id, title }))}
+          />
           <div className="mt-12 space-y-12">
             {sections.map((s) => (
               <section key={s.id} id={s.id} className="scroll-mt-24">

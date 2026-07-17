@@ -70,21 +70,10 @@ export function NavSearch() {
         if (!wrapper.current?.contains(e.relatedTarget as Node)) setOpen(false);
       }}
     >
-      <div className="flex items-center gap-2 rounded-full border bg-fd-secondary px-4 py-1.5 text-sm">
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          className="shrink-0 text-fd-muted-foreground"
-          aria-hidden
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
+      <div className="flex items-center gap-2 rounded-full border bg-fd-secondary px-4 py-1.5 font-mono text-[13px]">
+        <span className="select-none text-fd-muted-foreground" aria-hidden>
+          $
+        </span>
         <input
           value={search}
           onChange={(e) => {
@@ -99,14 +88,14 @@ export function NavSearch() {
               router.push(top[0].url);
             }
           }}
-          placeholder="Search docs"
+          placeholder="search docs"
           aria-label="Search docs"
           className="w-full bg-transparent outline-none placeholder:text-fd-muted-foreground"
         />
       </div>
 
       {showPanel ? (
-        <div className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-xl border bg-fd-background">
+        <div className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-xl border bg-fd-background text-left">
           {top.length > 0 ? (
             <ul>
               {top.map((r) => (

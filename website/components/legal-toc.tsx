@@ -1,6 +1,53 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+/* Mobile companion to the sticky nav: a collapsed disclosure at the top
+   of the page. Picking a section closes it and jumps there. */
+export function MobileLegalToc({
+  sections,
+}: {
+  sections: { id: string; title: string }[];
+}) {
+  const ref = useRef<HTMLDetailsElement>(null);
+
+  return (
+    <details ref={ref} className="group mt-8 rounded-lg border lg:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+        On this page
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-fd-muted-foreground transition-transform group-open:rotate-180"
+          aria-hidden
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <ul className="border-t p-2">
+        {sections.map((s) => (
+          <li key={s.id}>
+            <a
+              href={`#${s.id}`}
+              onClick={() => {
+                if (ref.current) ref.current.open = false;
+              }}
+              className="block rounded-md px-2 py-1.5 text-sm text-fd-muted-foreground hover:bg-fd-accent hover:text-fd-foreground"
+            >
+              {s.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
 
 /* Sticky section nav for legal pages: tracks the section in view and
    highlights it, Stripe style. */

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { CopyBar, CopyCommand } from '@/components/copy-command';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Haypile: private search and Q&A for your documents' },
+  title: { absolute: 'Haypile: fast, private search and Q&A for your documents' },
   description:
     'One binary that watches your folders, indexes every PDF, Word file, and note, and answers questions with citations. Fully local semantic search: no cloud, no Python, no vector database, zero outbound connections.',
   alternates: { canonical: '/' },
@@ -127,9 +127,9 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       {/* Hero: headline, command, caption. */}
-      <section className="flex flex-col items-center px-4 pb-28 pt-24 text-center sm:pt-32">
+      <section className="flex flex-col items-center px-6 pb-28 pt-24 text-center sm:pt-32">
         <h1 className="max-w-xl text-4xl font-semibold tracking-tight sm:text-5xl sm:leading-[1.12]">
-          Private search and Q&A for your documents
+          Fast, private search and Q&A for your documents
         </h1>
         <div className="mt-12">
           <CopyCommand command="brew install BenyD/tap/hay" />
@@ -193,7 +193,7 @@ export default function HomePage() {
       </section>
 
       {/* Get started */}
-      <section className="flex flex-col items-center px-4 pb-16 pt-8 text-center">
+      <section className="flex flex-col items-center px-6 pb-24 pt-4 text-center">
         <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Get started with Haypile
         </h2>

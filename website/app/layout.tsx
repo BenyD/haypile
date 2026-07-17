@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://haypile.sh'),
   title: {
     template: '%s | Haypile',
-    default: 'Haypile: private search and Q&A for your documents',
+    default: 'Haypile: fast, private search and Q&A for your documents',
   },
   description:
     'Haypile is a local, private semantic search engine for your documents. One binary indexes your PDFs, Word files, and notes, answers questions with citations, and never sends anything off your machine.',

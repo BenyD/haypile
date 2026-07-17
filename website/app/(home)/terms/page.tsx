@@ -67,7 +67,7 @@ const sections: LegalSection[] = [
         <Link href="https://github.com/BenyD/haypile/issues" className="underline underline-offset-4">
           open an issue
         </Link>{' '}
-        or email benydishon@gmail.com.
+        or email hello@haypile.sh.
       </p>
     ),
   },

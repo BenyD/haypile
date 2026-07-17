@@ -14,8 +14,8 @@ locally. The embedding model ships inside the binary, the index is one
 SQLite file, and the software makes zero outbound network connections
 (verifiable with \`hay status\`).
 
-Install: \`brew install BenyD/tap/hay\` (macOS) or the install script at
-https://github.com/BenyD/haypile for Linux. Open source, AGPL-3.0.
+Install: \`brew install BenyD/tap/hay\` (macOS) or
+\`curl -fsSL haypile.sh | sh\` for Linux. Open source, AGPL-3.0.
 
 For AI agents: the daemon exposes MCP (Streamable HTTP) at
 http://localhost:11500/mcp with tools \`search_documents\` and

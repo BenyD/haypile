@@ -1,0 +1,15 @@
+// The haypile.sh root-domain trick: curl and wget get the install script,
+// browsers get the website. Deploy: npx wrangler deploy (after login).
+{
+	"name": "haypile-installer",
+	"main": "src/index.js",
+	"compatibility_date": "2026-07-17",
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": {
+		"enabled": true,
+		"logs": { "head_sampling_rate": 1 }
+	},
+	// Root path only: every other URL goes straight to Pages without
+	// touching the Worker.
+	"routes": [{ "pattern": "haypile.sh/", "zone_name": "haypile.sh" }]
+}

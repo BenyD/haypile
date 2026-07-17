@@ -71,7 +71,7 @@ export function DownloadButton() {
                 right binary from GitHub releases.
               </p>
               <div className="mt-3">
-                <CopyBar command="curl -fsSL https://raw.githubusercontent.com/BenyD/haypile/main/install.sh | sh" />
+                <CopyBar command="curl -fsSL haypile.sh | sh" />
               </div>
             </div>
 

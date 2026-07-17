@@ -28,7 +28,7 @@ brew install BenyD/tap/hay
 Or grab a binary from [releases](https://github.com/BenyD/haypile/releases), or run the install script:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/BenyD/haypile/main/install.sh | sh
+curl -fsSL haypile.sh | sh
 ```
 
 One binary, around 56MB, with the embedding model inside. No Python, no Docker, no vector database, no model downloads, no network.

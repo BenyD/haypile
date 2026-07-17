@@ -237,7 +237,9 @@ export function HeroTerminal() {
       { prompt: false, text: '' },
     ]);
     setInteractive(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
+    // preventScroll: focusing must not yank the page when the terminal is
+    // partly scrolled off-screen.
+    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
   };
 
   const submit = () => {
@@ -300,7 +302,7 @@ export function HeroTerminal() {
     <div
       className="flex w-full cursor-text justify-center overflow-hidden rounded-2xl border bg-cover bg-center p-5 sm:p-16 sm:py-24"
       style={{ backgroundImage: "url('/hero-bg.jpg')" }}
-      onClick={interactive ? () => inputRef.current?.focus() : goInteractive}
+      onClick={interactive ? () => inputRef.current?.focus({ preventScroll: true }) : goInteractive}
     >
       <div className="relative w-full max-w-5xl overflow-hidden rounded-xl border bg-fd-background text-left">
       <div className="relative flex items-center gap-1.5 border-b px-4 py-2.5">

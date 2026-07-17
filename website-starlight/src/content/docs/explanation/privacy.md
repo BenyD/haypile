@@ -1,0 +1,46 @@
+---
+title: Privacy, verified
+description: What "zero external connections" means, how to check it, and where the boundaries are.
+---
+
+Local-first tools usually ask for trust. Haypile tries to ask for less of it, by making its central privacy claim something you can measure.
+
+## The claim
+
+Haypile makes zero external network connections. Not few, not anonymized: zero.
+
+- Indexing, embedding, and search run entirely in-process. The embedding model is inside the binary; there is nothing to download and no API to call.
+- The daemon listens on localhost only.
+- There is no telemetry, no update check, no crash reporting. If that ever changes it will be opt-in, documented loudly, and off by default. This commitment is versioned with the code.
+
+## How to check it
+
+```sh
+hay status
+```
+
+```
+Outbound connections: 0 (your documents stay on this machine)
+```
+
+That number is measured live against the running daemon's actual sockets, not asserted from a README. If you want a second opinion, ask the OS directly:
+
+```sh
+lsof -p $(pgrep -f "hay serve") -i TCP
+```
+
+You will find listeners on localhost and nothing else. Being auditable by standard tools, on an open codebase, is the point.
+
+## The boundaries, honestly drawn
+
+Three cases involve the network, each explicitly yours to choose:
+
+**Installation.** Downloading the binary is a network act, once, from GitHub Releases. The install script does nothing else, and it is short enough to read first.
+
+**`hay llm setup` and `hay ask`.** Haypile ships no LLM. Answer generation talks to a server on your machine (Ollama, LM Studio, llama.cpp, Jan) over localhost. `hay llm setup` can download Ollama and a model for you; it asks before every download. Once the model is on disk, asking questions is fully offline.
+
+**MCP clients.** If you connect Claude Code or another cloud-backed agent to Haypile, the passages it retrieves become part of that agent's context, which the agent sends to its own provider. Haypile's behavior does not change; the agent's reach is what you are choosing. For a fully offline answer path, use `hay ask` with a local model.
+
+## Why this matters more than a policy
+
+Privacy policies describe intentions and can change. Architecture describes capabilities and is harder to walk back. Haypile's design removes the capability: there is no code path that phones home, no account system, no server side at all. For client-confidential, medical, or just personal documents, "cannot" beats "will not".

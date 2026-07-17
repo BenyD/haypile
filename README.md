@@ -57,7 +57,7 @@ These are versioned with the code and will not be quietly redrawn:
 ## How it works
 
 ```
-folders -> watcher -> extract (pdf/docx/md/txt) -> chunk -> embed
+folders -> watcher -> extract (pdf/docx/pptx/md/txt/html) -> chunk -> embed
                                                             |
         you <- citations <- RRF merge <- FTS5 + vector search <- SQLite (one file)
 ```
@@ -135,8 +135,8 @@ hay llm setup            guided local LLM setup for hay ask
 
 | Version | Scope |
 |---|---|
-| v0.x (now) | CLI, REST API, MCP server. Markdown, text, PDF, docx. |
-| v1.x | OCR for scanned PDFs, pptx and html extraction, Windows polish |
+| v0.x (now) | CLI, REST API, MCP server. Markdown, text, PDF, docx, pptx, HTML. |
+| v1.x | OCR for scanned PDFs, Windows installer polish |
 | v1.5 | `hay web`: bundled local web UI (free, AGPL): search box, answer, click citation, see source |
 | v2 | Optional larger embedding models, ANN index for very large corpora |
 | Pro | Team layer for offices: auth, roles, audit logs, shared indexes (paid) |

@@ -188,7 +188,7 @@ Standing habits from M0: (1) an eval set of ~10 queries with expected results, r
 
 | Version | Scope |
 |---|---|
-| v1.x | OCR for scanned PDFs, pptx + html extraction, Windows installer polish |
+| v1.x | OCR for scanned PDFs, Windows installer polish (pptx + html extraction shipped in v0.x) |
 | **v1.5** | **`hay web` — minimal bundled local web UI** (search box → answer with clickable citations → source preview). Free, AGPL, single-user, served by the existing daemon on localhost. This is the non-technical-user entry point; developed fully in the open per §10.2 — explicitly *not* the Ollama private-repo GUI move. Community UIs on the API are encouraged and linked from the README before v1.5 exists. |
 | v2 | Optional larger embedding models, ANN index for very large corpora, possible desktop/tray app if v1.5 usage justifies it |
 | Pro (post-v1) | Team layer: auth, roles, audit logs, shared indexes, team web UI (paid — see §10.3) |

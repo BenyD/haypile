@@ -25,6 +25,9 @@ var extractors = map[string]func(path string) ([]Section, error){
 	".txt":      extractPlain,
 	".docx":     extractDocx,
 	".pdf":      extractPDF,
+	".pptx":     extractPptx,
+	".html":     extractHTML,
+	".htm":      extractHTML,
 }
 
 // Supported reports whether the file at path is a format Haypile can index.

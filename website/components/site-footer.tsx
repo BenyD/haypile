@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export function SiteFooter() {
   return (
@@ -6,12 +7,6 @@ export function SiteFooter() {
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-fd-muted-foreground sm:flex-row">
         <span>© 2026 Haypile</span>
         <div className="flex flex-wrap items-center gap-5">
-          <Link href="https://github.com/BenyD/haypile/releases" className="hover:text-fd-foreground">
-            Download
-          </Link>
-          <Link href="/docs" className="hover:text-fd-foreground">
-            Docs
-          </Link>
           <Link href="https://github.com/BenyD/haypile" className="hover:text-fd-foreground">
             GitHub
           </Link>
@@ -21,9 +16,7 @@ export function SiteFooter() {
           <Link href="/terms" className="hover:text-fd-foreground">
             Terms
           </Link>
-          <Link href="https://github.com/BenyD/haypile/blob/main/LICENSE" className="hover:text-fd-foreground">
-            License
-          </Link>
+          <ThemeToggle />
         </div>
       </div>
     </footer>

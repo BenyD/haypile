@@ -1,6 +1,7 @@
 /* Serves `curl haypile.sh | sh`.
  *
- * Only the root path reaches this script (run_worker_first: ["/"]).
+ * Every request runs through this script (www redirect needs all
+ * paths); assets still serve from the static build via the binding.
  * Terminal user agents get the install script, which ships as a static
  * asset at /install.sh; browsers fall through to the landing page. */
 export default {
@@ -8,9 +9,14 @@ export default {
     const ua = request.headers.get('user-agent') ?? '';
     const reqUrl = new URL(request.url);
 
-    // www is not a place, it is a redirect. Path and query survive.
-    if (reqUrl.hostname === 'www.haypile.sh') {
-      reqUrl.hostname = 'haypile.sh';
+    // Canonicalize in one hop: http becomes https, www becomes apex.
+    // Plain-HTTP detection: the runtime may normalize request.url to
+    // https behind the proxy, but cf.tlsVersion is only set when the
+    // visitor actually connected over TLS.
+    const overTls = Boolean(request.cf && request.cf.tlsVersion);
+    if (!overTls || reqUrl.protocol === 'http:' || reqUrl.hostname === 'www.haypile.sh') {
+      reqUrl.protocol = 'https:';
+      if (reqUrl.hostname === 'www.haypile.sh') reqUrl.hostname = 'haypile.sh';
       return Response.redirect(reqUrl.toString(), 301);
     }
 

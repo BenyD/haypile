@@ -37,10 +37,12 @@ main() {
     curl -fsSL "$url" -o "$tmp/hay.tar.gz"
     tar -xzf "$tmp/hay.tar.gz" -C "$tmp"
 
-    if [ -w "$INSTALL_DIR" ]; then
+    mkdir -p "$INSTALL_DIR" 2>/dev/null || true
+    if [ -d "$INSTALL_DIR" ] && [ -w "$INSTALL_DIR" ]; then
         mv "$tmp/hay" "$INSTALL_DIR/hay"
     else
         echo "Writing to $INSTALL_DIR needs sudo:"
+        sudo mkdir -p "$INSTALL_DIR"
         sudo mv "$tmp/hay" "$INSTALL_DIR/hay"
     fi
 

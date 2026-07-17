@@ -31,6 +31,12 @@ Or grab a binary from [releases](https://github.com/BenyD/haypile/releases), or 
 curl -fsSL haypile.sh | sh
 ```
 
+On Windows, run this in PowerShell:
+
+```powershell
+irm https://haypile.sh/install.ps1 | iex
+```
+
 One binary, around 56MB, with the embedding model inside. No Python, no Docker, no vector database, no model downloads, no network.
 
 ## Why

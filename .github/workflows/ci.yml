@@ -31,7 +31,7 @@ jobs:
 
   # Cross-compilation must stay green from day one: once sqlite-vec (CGo)
   # lands, this matrix is the early-warning system for the project's
-  # top-listed risk (PRD §13).
+  # top-listed risk (see docs/ROADMAP.md).
   build:
     runs-on: ubuntu-latest
     strategy:

@@ -3,7 +3,7 @@ package ingest
 import "strings"
 
 // Chunk budgets in bytes. ~4 bytes per token for English text puts 2000
-// bytes at the PRD's ~500-token target with ~12% overlap; both are knobs
+// bytes at the roadmap's ~500-token target with ~12% overlap; both are knobs
 // the eval set owns.
 const (
 	chunkBudget  = 2000

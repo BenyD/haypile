@@ -151,7 +151,7 @@ type Status struct {
 	Chunks        int          `json:"chunks"`
 	PendingJobs   int          `json:"pending_jobs"`
 	// OutboundConns is the daemon's live non-listening TCP connections —
-	// the PRD's verifiable "0 external connections" claim, measured, not
+	// the roadmap's verifiable "0 external connections" claim, measured, not
 	// asserted.
 	OutboundConns int    `json:"outbound_connections"`
 	OutboundNote  string `json:"outbound_note,omitempty"`

@@ -1,4 +1,4 @@
-// Package e2e is the daemon smoke test the PRD requires in CI from M3:
+// Package e2e is the daemon smoke test the roadmap requires in CI:
 // build the real binary, serve, add a folder, drop a file in, query the
 // API, and assert citations — the product promise exercised end to end,
 // subprocess and all, under -race.

@@ -43,7 +43,7 @@ const demo: Step[] = [
 /* Commands the interactive shell can ghost-complete, in suggestion
    priority order. */
 const completions = [
-  'help',
+  'hay help',
   'hay add ~/Documents',
   'hay search "agreement cancellation"',
   'hay ask "what notice period applies?"',
@@ -70,7 +70,7 @@ function run(line: string): Row[] {
     lines.map((text) => ({ prompt: false, text, bright }));
   const cmd = line.trim();
   if (cmd === '') return [];
-  if (cmd === 'help' || cmd === 'hay help' || cmd === 'hay')
+  if (cmd === 'hay help' || cmd === 'hay' || cmd === 'help')
     return out([
       'This is a live demo shell. Try:',
       '  hay add <folder>        index a folder',
@@ -133,7 +133,7 @@ function run(line: string): Row[] {
     return out(['FOLDER          TAG    FILES  CHUNKS', '~/Documents            214    1,892', '']);
   if (cmd.startsWith('brew install'))
     return out(['That one belongs in your real terminal :)', '']);
-  return out([`command not found: ${cmd.split(' ')[0]} (try help)`, '']);
+  return out([`command not found: ${cmd.split(' ')[0]} (try hay help)`, '']);
 }
 
 export function HeroTerminal() {
@@ -233,7 +233,7 @@ export function HeroTerminal() {
       { prompt: false, text: '      hay ask "what notice period applies?"' },
       { prompt: false, text: '      hay status' },
       { prompt: false, text: '' },
-      { prompt: false, text: 'Tab completes. Type help for everything.' },
+      { prompt: false, text: 'Tab completes. Type hay help for everything.' },
       { prompt: false, text: '' },
     ]);
     setInteractive(true);

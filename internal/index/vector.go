@@ -108,7 +108,7 @@ func (s *Store) PutEmbedding(chunkID int64, sha, model string, vec []float32) er
 
 // VectorSearch returns the chunks nearest to query by dot product (vectors
 // are L2-normalized, so this is cosine similarity). Brute force is the v1
-// strategy per the PRD: linear scan is well within budget at personal-corpus
+// strategy per the roadmap: linear scan is well within budget at personal-corpus
 // scale, and an ANN index is a v2 concern.
 func (s *Store) VectorSearch(query []float32, tag string, limit int) ([]Result, error) {
 	rows, err := s.db.Query(`

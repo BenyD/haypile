@@ -147,7 +147,7 @@ hay llm setup            guided local LLM setup for hay ask
 | v2 | Optional larger embedding models, ANN index for very large corpora |
 | Pro | Team layer for offices: auth, roles, audit logs, shared indexes (paid) |
 
-Full product spec: [docs/PRD.md](docs/PRD.md).
+Roadmap, decisions, and trust commitments in detail: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Development
 

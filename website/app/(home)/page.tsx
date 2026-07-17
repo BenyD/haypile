@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Terminal, type Step } from '@/components/terminal';
 import { CopyBar, CopyCommand } from '@/components/copy-command';
+import { HeroTerminal } from '@/components/hero-terminal';
 
 export const metadata: Metadata = {
   title: { absolute: 'Haypile: fast, private search and Q&A for your documents' },
@@ -32,68 +34,74 @@ const features: {
   command?: string;
   href: string;
   linkText: string;
-  terminal: React.ReactNode;
+  script: Step[];
 }[] = [
   {
     title: 'Everything on your disk, searchable',
     body: 'Grep matches strings and gets nothing from a PDF. Haypile extracts and embeds every document once, then watches the folder: ask for agreement cancellation and the termination clause surfaces in milliseconds, page cited, nothing re-read.',
     href: '/docs/guides/search',
     linkText: 'Learn about search',
-    terminal: (
-      <>
-        <Prompt cmd="hay add ~/contracts" />
-        <Dim>
-          {'Indexed 214 files (1,892 chunks).\n'}
-          {'Embedded 1,892 chunks for search.\n\n'}
-        </Dim>
-        <Prompt cmd={'hay search "agreement cancellation"'} />
-        <Dim>
-          {' 1. vendor-deal.docx · chunk 2\n'}
-          {'    Either party may terminate this\n'}
-          {'    Agreement with sixty days notice.\n'}
-          {' 2. vendor-agreement.pdf · page 1\n'}
-          {'    This Agreement may be terminated\n'}
-          {'    by either party...'}
-        </Dim>
-      </>
-    ),
+    script: [
+      { kind: 'cmd', text: 'hay add ~/contracts' },
+      {
+        kind: 'out',
+        lines: ['Indexed 214 files (1,892 chunks).', 'Embedded 1,892 chunks for search.', ''],
+      },
+      { kind: 'cmd', text: 'hay search "agreement cancellation"' },
+      {
+        kind: 'out',
+        lines: [
+          ' 1. vendor-deal.docx (chunk 2)',
+          '    Either party may terminate this',
+          '    Agreement with sixty days notice.',
+          ' 2. vendor-agreement.pdf (page 1)',
+          '    This Agreement may be terminated',
+          '    by either party...',
+        ],
+      },
+    ],
   },
   {
     title: 'Answers with receipts',
     body: 'Your local LLM answers from the retrieved passages and cites the file and page for every claim, so a wrong answer has nowhere to hide. Fully offline: it works on a plane, and on documents that are not allowed near a cloud.',
     href: '/docs/guides/ask',
     linkText: 'Set up hay ask',
-    terminal: (
-      <>
-        <Prompt cmd={'hay ask "what notice period applies?"'} />
-        <Dim>{'Answering with llama3.2...\n\n'}</Dim>
-        {'The vendor agreement requires a 60-day\n'}
-        {'written notice period for termination [1].\n\n'}
-        <Dim>
-          {'Sources:\n'}
-          {'  [1] vendor-deal.docx · chunk 2\n'}
-          {'  [2] meridian-msa.pdf · page 4'}
-        </Dim>
-      </>
-    ),
+    script: [
+      { kind: 'cmd', text: 'hay ask "what notice period applies?"' },
+      { kind: 'out', lines: ['Answering with llama3.2...', ''] },
+      {
+        kind: 'out',
+        bright: true,
+        lines: [
+          'The vendor agreement requires a 60-day',
+          'written notice period for termination [1].',
+          '',
+        ],
+      },
+      {
+        kind: 'out',
+        lines: ['Sources:', '  [1] vendor-deal.docx (chunk 2)', '  [2] meridian-msa.pdf (page 4)'],
+      },
+    ],
   },
   {
     title: 'Your documents stay yours',
     body: 'Client files, medical records, anything under NDA: some documents must never leave your machine. The model ships inside the binary, the index is one SQLite file on your disk, and hay status proves the outbound count is zero.',
     href: '/docs/explanation/privacy',
     linkText: 'How privacy is verified',
-    terminal: (
-      <>
-        <Prompt cmd="hay status" />
-        <Dim>
-          {'Daemon:   running (up 3d 4h)\n'}
-          {'Index:    ~/.haypile/haypile.db\n'}
-          {'Indexed:  3 sources, 1,214 files\n'}
-          {'Model:    bundled/all-MiniLM-L6-v2\n'}
-        </Dim>
-        {'Outbound connections: 0'}
-      </>
-    ),
+    script: [
+      { kind: 'cmd', text: 'hay status' },
+      {
+        kind: 'out',
+        lines: [
+          'Daemon:   running (up 3d 4h)',
+          'Index:    ~/.haypile/haypile.db',
+          'Indexed:  3 sources, 1,214 files',
+          'Model:    bundled/all-MiniLM-L6-v2',
+        ],
+      },
+      { kind: 'out', bright: true, lines: ['Outbound connections: 0'] },
+    ],
   },
   {
     title: 'Works with your AI tools',
@@ -101,21 +109,22 @@ const features: {
     command: 'claude mcp add --transport http haypile http://localhost:11500/mcp',
     href: '/docs/guides/claude-code',
     linkText: 'Connect Claude Code',
-    terminal: (
-      <>
-        <Prompt cmd={'claude mcp add --transport http \\'} />
-        {'    haypile http://localhost:11500/mcp\n'}
-        <Dim>{'Added HTTP MCP server haypile\n\n'}</Dim>
-        <Prompt cmd="claude" />
-        <Dim>
-          {'> what does the vendor deal say\n'}
-          {'  about payment?\n'}
-          {'⏺ search_documents("payment terms")\n'}
-          {'  Invoices are due net-45\n'}
-          {'  [vendor-deal.docx · chunk 3]...'}
-        </Dim>
-      </>
-    ),
+    script: [
+      { kind: 'cmd', text: 'claude mcp add --transport http \\' },
+      { kind: 'out', bright: true, lines: ['    haypile http://localhost:11500/mcp'] },
+      { kind: 'out', lines: ['Added HTTP MCP server haypile', ''] },
+      { kind: 'cmd', text: 'claude' },
+      {
+        kind: 'out',
+        lines: [
+          '> what does the vendor deal say',
+          '  about payment?',
+          '⏺ search_documents("payment terms")',
+          '  Invoices are due net-45',
+          '  [vendor-deal.docx (chunk 3)]...',
+        ],
+      },
+    ],
   },
 ];
 
@@ -126,8 +135,9 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {/* Hero: headline, command, caption. */}
-      <section className="flex flex-col items-center px-6 pb-28 pt-24 text-center sm:pt-32">
+      {/* Hero: headline and install first, then the product demos
+          itself in a self-running terminal. */}
+      <section className="flex flex-col items-center px-6 pb-28 pt-20 text-center sm:pt-24">
         <h1 className="max-w-xl text-4xl font-semibold tracking-tight sm:text-5xl sm:leading-[1.12]">
           Fast, private search and Q&A for your documents
         </h1>
@@ -143,9 +153,13 @@ export default function HomePage() {
             download from GitHub
           </Link>
         </p>
+        <div className="mt-16 w-full max-w-6xl">
+          <HeroTerminal />
+        </div>
       </section>
 
-      {/* Features in a Z pattern: text and terminal swap sides each row. */}
+      {/* Features in a Z pattern: each shows a finished session
+          transcript. */}
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-24 px-6 pb-28">
         {features.map((f, i) => (
           <div
@@ -177,16 +191,7 @@ export default function HomePage() {
                 (i % 2 === 1 ? 'lg:order-1' : '')
               }
             >
-              <div className="overflow-hidden rounded-xl border bg-fd-background">
-                <div className="flex items-center gap-1.5 border-b px-4 py-2.5">
-                  <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-                  <span className="size-2.5 rounded-full bg-[#febc2e]" />
-                  <span className="size-2.5 rounded-full bg-[#28c840]" />
-                </div>
-                <pre className="overflow-x-auto p-5 text-left text-[13px] leading-6">
-                  <code>{f.terminal}</code>
-                </pre>
-              </div>
+              <Terminal script={f.script} />
             </div>
           </div>
         ))}
@@ -210,20 +215,6 @@ export default function HomePage() {
           </Link>
         </p>
       </section>
-
     </main>
   );
-}
-
-function Prompt({ cmd }: { cmd: string }) {
-  return (
-    <>
-      <span className="text-fd-muted-foreground">$ </span>
-      {cmd + '\n'}
-    </>
-  );
-}
-
-function Dim({ children }: { children: React.ReactNode }) {
-  return <span className="text-fd-muted-foreground">{children}</span>;
 }

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/BenyD/haypile/security/advisories/new
+    about: Please report security issues privately, not as a public issue. See SECURITY.md.
+  - name: Question or idea
+    url: https://github.com/BenyD/haypile/discussions
+    about: For open-ended questions and discussion. For bugs, use the bug report form.

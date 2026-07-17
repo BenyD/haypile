@@ -1,0 +1,56 @@
+# Weekly grouped dependency updates. Security alerts and security-update PRs
+# are configured in repo settings, not here.
+version: 2
+updates:
+  # Go modules: one weekly PR for all minor/patch bumps; majors arrive
+  # individually. Cooldown: never propose a version released less than 7 days
+  # ago, so compromised releases get caught and yanked before they reach us.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: chore(deps)
+    open-pull-requests-limit: 10
+
+  # Website (Next.js docs site): one weekly PR for minor/patch, same cooldown.
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: chore(deps)
+    open-pull-requests-limit: 10
+
+  # GitHub Actions: one weekly PR for everything, same 7-day cooldown.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: ci

@@ -162,6 +162,14 @@ Without the model, everything still works in keyword-only mode.
 
 Retrieval quality is measured, not vibes: [eval/](eval/) holds a query set with expected results that runs on every retrieval-affecting change.
 
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first. It covers the dev workflow, the rule that the privacy contract (zero outbound, bundled model, localhost only) must stay intact, how contributions are licensed, and the DCO sign-off (`git commit -s`) that CI enforces.
+
+## Security
+
+Found a vulnerability? Please report it privately, not as a public issue. See [SECURITY.md](SECURITY.md) for the disclosure process and what is in scope.
+
 ## License
 
 [AGPL-3.0](LICENSE). Free forever for individuals. The AGPL keeps it free for every actual user while requiring anyone offering Haypile as a service to open-source their changes.

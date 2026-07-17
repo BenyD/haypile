@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest an idea or improvement for Haypile.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Haypile is intentionally minimal and tightly scoped. The best requests
+        describe a real problem you hit, not just a feature to add. See the
+        roadmap and trust commitments in the README for what is in and out of
+        scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that Haypile makes hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+      description: How you imagine it working. Rough is fine.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+    validations:
+      required: false

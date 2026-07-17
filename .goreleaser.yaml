@@ -1,0 +1,85 @@
+# Release pipeline: `git tag vX.Y.Z && goreleaser release`.
+# Binaries embed the quantized model (-tags bundled); the before hook
+# fetches and quantizes the weights so a clean CI runner can release.
+version: 2
+
+project_name: haypile
+
+before:
+  hooks:
+    - ./hack/fetch-model.sh
+
+builds:
+  - id: hay
+    main: ./cmd/hay
+    binary: hay
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+      - -tags=bundled
+    ldflags:
+      - -s -w -X github.com/BenyD/haypile/internal/cli.version={{.Version}}
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs"
+      - "^test"
+
+# Casks are how goreleaser ships pre-compiled binaries via Homebrew now
+# (formulas are for build-from-source). Users still just run:
+#   brew install BenyD/tap/hay
+homebrew_casks:
+  - name: hay
+    repository:
+      owner: BenyD
+      name: homebrew-tap
+      branch: main
+    homepage: https://github.com/BenyD/haypile
+    description: "Private search and Q&A for your documents. Local, private search and Q&A over your files."
+    license: AGPL-3.0-only
+    commit_author:
+      name: Beny Dishon K
+      email: benydishon@gmail.com
+    commit_msg_template: "brew: update {{ .ProjectName }} to {{ .Tag }}"
+    # The binary is not signed/notarized yet; clear the quarantine bit so
+    # macOS does not block it on first run.
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/hay"]
+          end
+
+release:
+  github:
+    owner: BenyD
+    name: haypile
+  draft: false
+  prerelease: auto

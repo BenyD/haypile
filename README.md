@@ -1,104 +1,96 @@
 # Haypile
 
-**Private search and Q&A for your documents.** A single binary that watches your folders, indexes every document, and answers questions about them — fully local, fully private, one command to install.
+**Private search and Q&A for your documents.** One binary that watches your folders, indexes every document, and answers questions about them. Fully local, fully private.
 
 > Everyone says finding information in your files is like finding a needle in a haystack. Haypile is the haystack that finds its own needles.
 
 ```sh
 hay add ~/Documents
+hay search "termination clause"
 hay ask "what did the Meridian contract say about termination?"
 ```
 
-> **Status: pre-release.** Haypile is being built in the open, milestone by milestone — see the [roadmap](#roadmap). Nothing is installable yet; star/watch the repo to follow along.
+Search understands meaning, not just words: "agreement cancellation" finds termination clauses. Exact identifiers still match exactly. Every result cites its source file and page.
+
+## Install
+
+```sh
+brew install BenyD/tap/hay
+```
+
+Or grab a binary from [releases](https://github.com/BenyD/haypile/releases), or run the install script:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/BenyD/haypile/main/install.sh | sh
+```
+
+One binary, around 56MB, with the embedding model inside. No Python, no Docker, no vector database, no model downloads, no network.
 
 ## Why
 
-Your documents — contracts, papers, notes, case files — are effectively unsearchable beyond filenames and exact keywords. Cloud AI tools fix that by making you upload everything to someone else's computer. Self-hosted RAG stacks fix it with Python environments, Docker, and a vector database to babysit.
+Your documents (contracts, papers, notes, case files) are effectively unsearchable beyond filenames and exact keywords. Cloud AI tools fix that by making you upload everything to someone else's computer. Self-hosted RAG stacks fix it with Python environments, Docker, and a vector database to babysit.
 
 Haypile is the missing option: **one binary, point it at folders, done.**
 
-- **Hybrid search** — semantic *and* keyword, merged. "Agreement cancellation" finds termination clauses; exact case numbers still match exactly.
-- **Citations always** — every result and every answer points to the source file and page.
-- **Always fresh** — folders are watched; save a file and it's searchable in seconds.
-- **Built to build on** — REST API and MCP server on `localhost:11500`, so Claude Code, Cursor, or your own scripts can use your documents as a knowledge source.
-- **Verifiably private** — see below.
+- **Hybrid search.** Semantic and keyword, merged. Paraphrases match by meaning; case numbers match exactly.
+- **Citations always.** Every result and every answer points to the source file and page.
+- **Always fresh.** Folders are watched. Save a file and it is searchable in seconds.
+- **Built to build on.** REST API and MCP server on `localhost:11500`, so Claude Code, Cursor, or your own scripts can use your documents as a knowledge source.
+- **Verifiably private.** See below.
 
 ## Trust commitments
 
 These are versioned with the code and will not be quietly redrawn:
 
-1. **The open/paid boundary is declared upfront.** Open forever (AGPL-3.0): indexing, search, ask, REST API, MCP, CLI, and the upcoming single-user web UI — the full single-user product, no feature hostages. Paid (later): team features — auth, roles, audit logs, shared indexes, team UI, hosted version.
-2. **"Zero external connections" is a verifiable feature, not a claim.** `hay status` reports outbound connections; the target is 0. No telemetry. Ever, at launch; if that ever changes it will be opt-in, documented loudly, and off by default.
+1. **The open/paid boundary is declared upfront.** Open forever (AGPL-3.0): indexing, search, ask, REST API, MCP, CLI, and the upcoming single-user web UI. The full single-user product, no feature hostages. Paid (later): team features such as auth, roles, audit logs, shared indexes, and a hosted version.
+2. **"Zero external connections" is a verifiable feature, not a claim.** `hay status` reports outbound connections; the target is 0. No telemetry. If that ever changes it will be opt-in, documented loudly, and off by default.
 3. **No silent network behavior.** A local-first tool must never phone home to keep working.
 4. **All development happens in this public repo.** No private-repo surprises.
 
 ## How it works
 
 ```
-folders → watcher → extract (pdf/docx/md/txt) → chunk → embed
-                                                        ↓
-                you ← citations ← RRF merge ← FTS5 + vector search ← SQLite (one file)
+folders -> watcher -> extract (pdf/docx/md/txt) -> chunk -> embed
+                                                            |
+        you <- citations <- RRF merge <- FTS5 + vector search <- SQLite (one file)
 ```
 
-Everything lives in a single SQLite database on your disk, and search is fully self-contained: the embedding model ships inside the binary — no external AI runtime, no model downloads, no network. Answers (`hay ask`) are generated by whatever OpenAI-compatible local server you already run (LM Studio, llama.cpp, Jan, Ollama, …) — Haypile itself ships no LLM and makes no network calls.
-
-## Roadmap
-
-| Version | Scope |
-|---|---|
-| **v1** (in progress) | CLI + REST API + MCP server. Markdown, text, PDF, docx. |
-| v1.x | OCR for scanned PDFs, pptx/html, Windows polish |
-| v1.5 | `hay web` — bundled local web UI (free, AGPL): search box → answer → click citation → source |
-| v2 | Optional larger embedding models, ANN index for very large corpora |
-| Pro | Team layer for offices: auth, roles, audit logs, shared indexes (paid) |
-
-Full product spec: [docs/PRD.md](docs/PRD.md).
-
-## Ask questions (bring your own LLM)
-
-`hay ask` retrieves the most relevant passages and has a local LLM answer
-from them, with citations:
-
-```sh
-hay ask "what did the Meridian contract say about termination?"
-```
-
-Generation uses any OpenAI-compatible server you already run — Ollama,
-LM Studio, llama.cpp, Jan — auto-detected on their usual ports, or set
-explicitly with `--endpoint http://localhost:11434/v1` and `--model llama3.2`.
-Without one, `hay ask` explains and shows the top passages instead. Search
-never needs an LLM.
-
-Don't have a local LLM yet? One guided command gets you there:
-
-```sh
-hay llm setup    # installs/starts Ollama and pulls a model — asks before every download
-```
+Everything lives in a single SQLite database on your disk, and search is fully self-contained: the embedding model ships inside the binary. Answers (`hay ask`) are generated by whatever OpenAI-compatible local server you already run (Ollama, LM Studio, llama.cpp, Jan). Haypile itself ships no LLM and makes no network calls.
 
 ## Set up a folder properly: `hay init`
 
-For a folder you'll work in — a case folder, a project, a paper archive —
-`hay init` writes a per-folder config and wires everything up in one go:
+For a folder you work in (a case folder, a project, a paper archive), `hay init` writes a per-folder config and wires everything up in one go:
 
 ```sh
 cd ~/cases/acme-litigation
-hay init          # asks 3 short questions, all with sensible defaults
+hay init          # three short questions, all with sensible defaults
 ```
 
-It creates `.haypile.yml` (tag + exclude patterns), indexes the folder,
-optionally writes `.mcp.json` so Claude Code and Cursor can search these
-docs, and offers `hay llm setup` if you don't have a local LLM yet.
-`hay init --yes` runs unattended; flags (`--tag`, `--exclude`, `--mcp`)
-answer any question ahead of time.
+It creates `.haypile.yml` (tag and exclude patterns), indexes the folder, optionally writes `.mcp.json` so Claude Code and Cursor can search these docs, and offers `hay llm setup` if you do not have a local LLM yet. `hay init --yes` runs unattended.
 
-Edit `.haypile.yml` by hand anytime — the daemon notices and re-syncs the
-index within seconds:
+Edit `.haypile.yml` by hand anytime. The daemon notices and re-syncs the index within seconds:
 
 ```yaml
 tag: acme-litigation
 exclude:
   - drafts/**
   - "*.bak"
+```
+
+## Ask questions (bring your own LLM)
+
+`hay ask` retrieves the most relevant passages and has a local LLM answer from them, with citations:
+
+```sh
+hay ask "what did the Meridian contract say about termination?"
+```
+
+Generation uses any OpenAI-compatible server you already run (Ollama, LM Studio, llama.cpp, Jan), auto-detected on their usual ports, or set explicitly with `--endpoint` and `--model`. Without one, `hay ask` explains and shows the top passages instead. Search never needs an LLM.
+
+No local LLM yet? One guided command gets you there:
+
+```sh
+hay llm setup    # installs and starts Ollama, pulls a model, asks before every download
 ```
 
 ## Use from Claude Code, Cursor, or your own tools
@@ -116,9 +108,33 @@ claude mcp add --transport http haypile http://localhost:11500/mcp
 curl -X POST localhost:11500/api/query -d '{"query": "termination clause"}'
 ```
 
-Tools exposed: `search_documents` (hybrid search with citations) and
-`list_sources`. The daemon starts automatically on `hay add` and only ever
-listens on localhost.
+Tools exposed: `search_documents` (hybrid search with citations) and `list_sources`. The daemon starts automatically on `hay add` and only ever listens on localhost.
+
+## Commands
+
+```
+hay init [folder]        per-folder setup: config, index, editor wiring
+hay add <path>           index a folder or file and watch it for changes
+hay search "<query>"     hybrid retrieval, results with citations
+hay ask "<question>"     answer from your documents, with cited sources
+hay list                 indexed folders and document counts
+hay remove <path>        un-index a folder
+hay status               daemon state, model info, outbound connections (target: 0)
+hay serve                run the daemon (REST API + MCP on localhost:11500)
+hay llm setup            guided local LLM setup for hay ask
+```
+
+## Roadmap
+
+| Version | Scope |
+|---|---|
+| v0.x (now) | CLI, REST API, MCP server. Markdown, text, PDF, docx. |
+| v1.x | OCR for scanned PDFs, pptx and html extraction, Windows polish |
+| v1.5 | `hay web`: bundled local web UI (free, AGPL): search box, answer, click citation, see source |
+| v2 | Optional larger embedding models, ANN index for very large corpora |
+| Pro | Team layer for offices: auth, roles, audit logs, shared indexes (paid) |
+
+Full product spec: [docs/PRD.md](docs/PRD.md).
 
 ## Development
 
@@ -127,14 +143,12 @@ go build ./cmd/hay     # build the binary
 go test ./... -race    # run tests (green before any merge)
 ```
 
-Semantic search uses an embedding model that release builds carry inside
-the binary. Dev builds load it from disk instead, so the 90MB file stays
-out of git:
+Semantic search uses an embedding model that release builds carry inside the binary. Dev builds load it from disk instead, so the weights stay out of git:
 
 ```sh
-./hack/fetch-model.sh                    # one-time download
+./hack/fetch-model.sh                    # one-time download (also quantizes)
 go build -tags bundled ./cmd/hay         # release-style: model in the binary
-HAYPILE_MODEL_PATH=internal/embed/bundled/model.safetensors ./hay …   # dev
+HAYPILE_MODEL_PATH=internal/embed/bundled/model.safetensors ./hay   # dev
 ```
 
 Without the model, everything still works in keyword-only mode.
@@ -143,4 +157,4 @@ Retrieval quality is measured, not vibes: [eval/](eval/) holds a query set with 
 
 ## License
 
-[AGPL-3.0](LICENSE). Free forever for individuals — the AGPL keeps it free for every actual user while requiring anyone offering Haypile as a service to open-source their changes.
+[AGPL-3.0](LICENSE). Free forever for individuals. The AGPL keeps it free for every actual user while requiring anyone offering Haypile as a service to open-source their changes.

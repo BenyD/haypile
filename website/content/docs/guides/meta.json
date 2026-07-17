@@ -1,4 +1,10 @@
 {
   "title": "Guides",
-  "pages": ["search", "ask", "claude-code", "folders"]
+  "pages": [
+    "search",
+    "ask",
+    "claude-code",
+    "folders"
+  ],
+  "defaultOpen": true
 }

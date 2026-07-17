@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
+  <img src="docs/logo.svg" alt="" width="48" height="48">
+</picture>
+
 # Haypile
 
 **Private search and Q&A for your documents.** One binary that watches your folders, indexes every document, and answers questions about them with citations. Nothing ever leaves your machine.

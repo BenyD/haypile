@@ -1,4 +1,8 @@
 {
   "title": "Understand",
-  "pages": ["how-it-works", "privacy"]
+  "pages": [
+    "how-it-works",
+    "privacy"
+  ],
+  "defaultOpen": true
 }

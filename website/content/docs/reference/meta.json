@@ -1,4 +1,9 @@
 {
   "title": "Reference",
-  "pages": ["cli", "api", "configuration"]
+  "pages": [
+    "cli",
+    "api",
+    "configuration"
+  ],
+  "defaultOpen": true
 }

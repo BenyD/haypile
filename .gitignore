@@ -25,5 +25,5 @@ internal/embed/bundled/model.q8.safetensors
 
 # Docs site build artifacts
 website/node_modules/
-website/dist/
-website/.astro/
+website/out/
+website/.next/

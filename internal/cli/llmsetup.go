@@ -66,7 +66,7 @@ func runLLMSetup(cmd *cobra.Command, p *prompter, model string, yes bool) error 
 		fmt.Fprintf(out, "Found a running LLM server: %s (model: %s)\n", c.BaseURL, c.Model)
 		return verifyLLM(ctx, out, c)
 	}
-	fmt.Fprintln(out, "No running LLM server found — setting one up with Ollama.")
+	fmt.Fprintln(out, "No running LLM server found. Setting one up with Ollama.")
 
 	// Step 1: ensure the ollama binary exists.
 	if _, err := exec.LookPath("ollama"); err != nil {

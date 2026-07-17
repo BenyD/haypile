@@ -4,6 +4,8 @@
 
 > Everyone says finding information in your files is like finding a needle in a haystack. Haypile is the haystack that finds its own needles.
 
+![hay demo: add a folder, search by meaning, verify zero outbound connections](docs/demo.gif)
+
 ```sh
 hay add ~/Documents
 hay search "termination clause"

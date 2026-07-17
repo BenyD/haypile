@@ -61,7 +61,7 @@ func newStatusCmd() *cobra.Command {
 			} else {
 				fmt.Fprintf(out, "Outbound connections: %d", s.OutboundConns)
 				if s.OutboundConns == 0 {
-					fmt.Fprint(out, " — your documents stay on this machine")
+					fmt.Fprint(out, " (your documents stay on this machine)")
 				}
 				fmt.Fprintln(out)
 			}

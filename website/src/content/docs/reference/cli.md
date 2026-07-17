@@ -1,0 +1,96 @@
+---
+title: CLI commands
+description: Every hay command, flag, and environment variable.
+---
+
+The binary is `hay`. Any command that needs the daemon starts it automatically; you never manage it by hand.
+
+## hay init [folder]
+
+Per-folder setup: writes `.haypile.yml`, indexes the folder, optionally writes `.mcp.json` and offers LLM setup. Defaults to the current directory.
+
+| Flag | Meaning | Default |
+| --- | --- | --- |
+| `--tag` | Tag for filtered search | folder name |
+| `--exclude` | Comma-separated glob patterns | none |
+| `--mcp` | Write `.mcp.json` for MCP clients | true |
+| `--yes` | Accept all defaults, no prompts | false |
+
+## hay add \<path\>
+
+Indexes a folder (recursively) or a single file, and watches it for changes. Unchanged files are skipped on re-add; identical content is never embedded twice, even across files.
+
+| Flag | Meaning | Default |
+| --- | --- | --- |
+| `--tag` | Tag for filtered search | from `.haypile.yml`, else none |
+
+Supported formats: `.pdf`, `.docx`, `.md`, `.markdown`, `.txt`. Hidden directories and excluded patterns are skipped. A file that fails to parse is counted and skipped; it never aborts the pass.
+
+## hay search "\<query\>"
+
+Hybrid retrieval: semantic and keyword legs run in parallel and the rankings are fused. Results cite file and page.
+
+| Flag | Meaning | Default |
+| --- | --- | --- |
+| `--tag` | Only search folders with this tag | all |
+| `--limit` | Maximum results | 10 |
+
+## hay ask "\<question\>"
+
+Retrieves relevant passages and has a local LLM answer from them with citations. Requires an OpenAI-compatible server (auto-detected); without one it prints the top passages instead.
+
+| Flag | Meaning | Default |
+| --- | --- | --- |
+| `--endpoint` | OpenAI-compatible base URL | auto-detect |
+| `--model` | Model to request | first chat model listed |
+| `--tag` | Only retrieve from folders with this tag | all |
+| `--limit` | Passages given to the model | 6 |
+
+## hay list
+
+Indexed folders with file and chunk counts.
+
+## hay remove \<path\>
+
+Un-indexes a source and stops watching it. The path must match what was added (see `hay list`).
+
+## hay status
+
+Daemon state, index location, counts, model, queued indexing jobs, and the measured outbound connection count.
+
+## hay serve
+
+Runs the daemon in the foreground: REST API and MCP on `localhost:11500`, plus the folder watcher. Usually you never run this yourself.
+
+| Flag | Meaning | Default |
+| --- | --- | --- |
+| `--host` | Bind address | 127.0.0.1 |
+| `--port` | API port | 11500 |
+
+Binding beyond localhost prints a loud warning: the API has no auth in v0.
+
+## hay llm setup
+
+Guided path to a working local LLM for `hay ask`: detects running servers, installs and starts Ollama with your confirmation, downloads a recommended model with your confirmation, verifies with a real request.
+
+| Flag | Meaning | Default |
+| --- | --- | --- |
+| `--model` | Model to download if none present | llama3.2:3b |
+| `--yes` | Answer yes to all prompts | false |
+
+## hay mcp-stdio
+
+MCP stdio transport for clients that launch a process. Bridges stdin/stdout to the daemon's `/mcp` endpoint, auto-starting the daemon if needed.
+
+## Environment variables
+
+| Variable | Meaning |
+| --- | --- |
+| `HAYPILE_DIR` | Data directory (index database, daemon runtime file). Default `~/.haypile` |
+| `HAYPILE_ADDR` | Daemon listen address, overrides host/port flags |
+| `HAYPILE_NO_DAEMON` | `1` disables daemon auto-start and routing (direct index access) |
+| `HAYPILE_LLM_ENDPOINT` | OpenAI-compatible base URL for `hay ask` |
+| `HAYPILE_LLM_MODEL` | Model name for `hay ask` |
+| `HAYPILE_EMBED_ENDPOINT` | Optional external embedding server (replaces the bundled model) |
+| `HAYPILE_EMBED_MODEL` | Model name for the embedding endpoint |
+| `HAYPILE_MODEL_PATH` | Dev builds: path to embedding weights on disk |

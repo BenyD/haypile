@@ -56,7 +56,7 @@ func runInit(cmd *cobra.Command, folder, tag string, excludes []string, mcp, mcp
 		return err
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("%s is not a folder — hay init configures folders (hay add handles single files)", abs)
+		return fmt.Errorf("%s is not a folder. hay init configures folders (hay add handles single files)", abs)
 	}
 
 	// An existing config seeds the defaults, so rerunning init is an edit,
@@ -149,7 +149,7 @@ func writeMCPConfig(out interface{ Write([]byte) (int, error) }, dir string) err
 		servers = map[string]any{}
 	}
 	if _, exists := servers["haypile"]; exists {
-		fmt.Fprintf(out, ".mcp.json already lists haypile — left as is\n")
+		fmt.Fprintf(out, ".mcp.json already lists haypile, left as is\n")
 		return nil
 	}
 	servers["haypile"] = map[string]any{

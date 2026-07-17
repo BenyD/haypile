@@ -1,0 +1,94 @@
+---
+title: Getting started
+description: From install to your first semantic search in under two minutes.
+---
+
+This tutorial takes you from nothing to searching your own documents. It takes about two minutes, and nothing in it needs the internet after the install step.
+
+## 1. Install
+
+With Homebrew:
+
+```sh
+brew install BenyD/tap/hay
+```
+
+Without Homebrew:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/BenyD/haypile/main/install.sh | sh
+```
+
+Either way you get one binary called `hay`. The embedding model that powers semantic search is already inside it. There is nothing else to download, ever.
+
+Check it works:
+
+```sh
+hay --version
+```
+
+## 2. Index a folder
+
+Point Haypile at any folder with documents in it. PDF, docx, Markdown, and plain text are indexed; everything else is ignored.
+
+```sh
+hay add ~/Documents
+```
+
+You will see each file scroll by, then a summary:
+
+```
+Indexed 214 files (1,892 chunks), 0 unchanged.
+Embedded 1,892 chunks for semantic search (bundled/all-MiniLM-L6-v2).
+Try: hay search "something you remember"
+```
+
+Two things happened quietly here. First, everything went into a single SQLite file at `~/.haypile/haypile.db`; there is no server to configure and no database to babysit. Second, a small background daemon started and is now watching the folder, so any file you save becomes searchable within seconds.
+
+## 3. Search
+
+Search for an idea, not just exact words:
+
+```sh
+hay search "agreement cancellation"
+```
+
+```
+ 1. ~/Documents/contracts/vendor-deal.docx · chunk 2
+    Termination
+
+    Either party may terminate this Agreement with sixty days written notice.
+ 2. ~/Documents/contracts/meridian-msa.pdf · page 4
+    Either party may terminate for convenience upon sixty (60) days prior
+    written notice.
+```
+
+Neither result contains the words "agreement cancellation". That is semantic search doing its job. Exact identifiers work too, and they match exactly:
+
+```sh
+hay search "2024-CV-01847"
+```
+
+Every result cites its source: the file, and for PDFs the page. You can always check the original.
+
+## 4. Prove it stays private
+
+```sh
+hay status
+```
+
+```
+Daemon:   running (0.1.0, up 42s)
+Index:    ~/.haypile/haypile.db
+Indexed:  1 sources, 214 files, 1,892 chunks
+Model:    bundled/all-MiniLM-L6-v2
+Outbound connections: 0 (your documents stay on this machine)
+```
+
+That last line is measured, not asserted. Haypile counts its own network connections and reports them. The target is zero, always.
+
+## Where to go next
+
+- Get answers instead of search results: [Ask questions with a local LLM](/guides/ask/)
+- Let Claude Code or Cursor search your documents: [Use Haypile from Claude Code](/guides/claude-code/)
+- Tag a folder and exclude drafts from the index: [Configure a folder](/guides/folders/)

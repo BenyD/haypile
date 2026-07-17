@@ -13,7 +13,7 @@ func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:     "hay",
 		Short:   "Local, private search and Q&A over your documents",
-		Long:    "Haypile watches your folders, indexes every document, and answers questions about them — fully local, fully private.",
+		Long:    "Haypile watches your folders, indexes every document, and answers questions about them. Fully local, fully private.",
 		Version: version,
 		// Silence cobra's own error printing; main.go handles errors once.
 		SilenceUsage:  true,

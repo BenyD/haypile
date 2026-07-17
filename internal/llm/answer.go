@@ -12,7 +12,7 @@ import (
 const systemPrompt = `You answer questions using ONLY the numbered context passages provided.
 Rules:
 - Cite passages inline as [1], [2] wherever you use them.
-- If the context does not contain the answer, say so plainly — never guess.
+- If the context does not contain the answer, say so plainly. Never guess.
 - Be concise and factual.`
 
 // Answer runs the generation leg of RAG: retrieved chunks in, cited

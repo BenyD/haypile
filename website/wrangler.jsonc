@@ -15,5 +15,11 @@
 		"directory": "./out",
 		"binding": "ASSETS",
 		"run_worker_first": ["/"]
-	}
+	},
+	"routes": [
+		{ "pattern": "haypile.sh", "custom_domain": true },
+		// www runs through the Worker on every path so it can 301 to the
+		// apex; needs a proxied dummy DNS record for www (AAAA 100::).
+		{ "pattern": "www.haypile.sh/*", "zone_name": "haypile.sh" }
+	]
 }

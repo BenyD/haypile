@@ -6,9 +6,16 @@
 export default {
   async fetch(request, env) {
     const ua = request.headers.get('user-agent') ?? '';
+    const reqUrl = new URL(request.url);
+
+    // www is not a place, it is a redirect. Path and query survive.
+    if (reqUrl.hostname === 'www.haypile.sh') {
+      reqUrl.hostname = 'haypile.sh';
+      return Response.redirect(reqUrl.toString(), 301);
+    }
 
     if (/\b(curl|wget)\b/i.test(ua)) {
-      const url = new URL(request.url);
+      const url = reqUrl;
       const script = await env.ASSETS.fetch(new URL('/install.sh', url.origin));
       return new Response(script.body, {
         status: script.status,

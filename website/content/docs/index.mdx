@@ -19,7 +19,13 @@ On Linux or macOS, with the install script:
 curl -fsSL haypile.sh | sh
 ```
 
-On Windows, download the zip from [releases](https://github.com/BenyD/haypile/releases/latest) and put `hay.exe` on your PATH.
+On Windows, run this in PowerShell:
+
+```powershell
+irm https://haypile.sh/install.ps1 | iex
+```
+
+It installs `hay.exe` under `%LOCALAPPDATA%\Programs\hay` and adds it to your PATH. Open a new terminal afterwards so the PATH change takes effect.
 
 Either way you get one binary called `hay`. The embedding model that powers semantic search is already inside it. There is nothing else to download, ever.
 

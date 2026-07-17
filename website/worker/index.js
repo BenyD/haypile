@@ -1,9 +1,10 @@
-/* Serves `curl haypile.sh | sh`.
+/* Serves `curl haypile.sh | sh` and `irm haypile.sh/install.ps1 | iex`.
  *
  * Every request runs through this script (www redirect needs all
  * paths); assets still serve from the static build via the binding.
- * Terminal user agents get the install script, which ships as a static
- * asset at /install.sh; browsers fall through to the landing page. */
+ * Terminal user agents get the matching install script, which ships as a
+ * static asset (/install.sh, /install.ps1); browsers fall through to the
+ * landing page. */
 export default {
   async fetch(request, env) {
     const ua = request.headers.get('user-agent') ?? '';
@@ -21,11 +22,20 @@ export default {
     }
 
     if (/\b(curl|wget)\b/i.test(ua)) {
-      const url = reqUrl;
-      const script = await env.ASSETS.fetch(new URL('/install.sh', url.origin));
+      const script = await env.ASSETS.fetch(new URL('/install.sh', reqUrl.origin));
       return new Response(script.body, {
         status: script.status,
         headers: { 'content-type': 'text/x-shellscript; charset=utf-8' },
+      });
+    }
+
+    // PowerShell installers: an explicit /install.ps1 path, or `irm
+    // haypile.sh | iex` (its user agent carries "PowerShell").
+    if (reqUrl.pathname === '/install.ps1' || /\bpowershell\b/i.test(ua)) {
+      const script = await env.ASSETS.fetch(new URL('/install.ps1', reqUrl.origin));
+      return new Response(script.body, {
+        status: script.status,
+        headers: { 'content-type': 'text/plain; charset=utf-8' },
       });
     }
 

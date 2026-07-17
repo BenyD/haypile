@@ -21,7 +21,7 @@ main() {
     esac
     case "$os" in
         darwin | linux) ;;
-        *) fail "unsupported OS: $os (Windows: download the zip from https://github.com/$REPO/releases)" ;;
+        *) fail "unsupported OS: $os (Windows: run 'irm https://haypile.sh/install.ps1 | iex' in PowerShell)" ;;
     esac
 
     version=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" |

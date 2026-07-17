@@ -9,14 +9,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6.5.0
         with:
           go-version: "1.24"
       # The bundled-embedder tests need the model weights; cache the 90MB
       # download so CI only pays for it when the model changes.
       - name: cache embedding model
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: internal/embed/bundled/model.safetensors
           key: minilm-l6-v2-safetensors
@@ -43,8 +43,8 @@ jobs:
           - { goos: darwin, goarch: arm64 }
           - { goos: windows, goarch: amd64 }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6.5.0
         with:
           go-version: "1.24"
       - name: build

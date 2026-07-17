@@ -75,6 +75,32 @@ Don't have a local LLM yet? One guided command gets you there:
 hay llm setup    # installs/starts Ollama and pulls a model — asks before every download
 ```
 
+## Set up a folder properly: `hay init`
+
+For a folder you'll work in — a case folder, a project, a paper archive —
+`hay init` writes a per-folder config and wires everything up in one go:
+
+```sh
+cd ~/cases/acme-litigation
+hay init          # asks 3 short questions, all with sensible defaults
+```
+
+It creates `.haypile.yml` (tag + exclude patterns), indexes the folder,
+optionally writes `.mcp.json` so Claude Code and Cursor can search these
+docs, and offers `hay llm setup` if you don't have a local LLM yet.
+`hay init --yes` runs unattended; flags (`--tag`, `--exclude`, `--mcp`)
+answer any question ahead of time.
+
+Edit `.haypile.yml` by hand anytime — the daemon notices and re-syncs the
+index within seconds:
+
+```yaml
+tag: acme-litigation
+exclude:
+  - drafts/**
+  - "*.bak"
+```
+
 ## Use from Claude Code, Cursor, or your own tools
 
 The daemon exposes MCP (Streamable HTTP) and REST on `localhost:11500`:

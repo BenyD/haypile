@@ -1,13 +1,11 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"os/exec"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -46,7 +44,7 @@ Nothing is installed or downloaded without asking first. If you already
 run LM Studio, llama.cpp, or Jan, this command just confirms it works.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runLLMSetup(cmd, model, yes)
+			return runLLMSetup(cmd, newPrompter(cmd), model, yes)
 		},
 	}
 
@@ -55,9 +53,13 @@ run LM Studio, llama.cpp, or Jan, this command just confirms it works.`,
 	return cmd
 }
 
-func runLLMSetup(cmd *cobra.Command, model string, yes bool) error {
+func runLLMSetup(cmd *cobra.Command, p *prompter, model string, yes bool) error {
 	out := cmd.OutOrStdout()
 	ctx := cmd.Context()
+	// confirm: --yes answers everything; otherwise default-no prompts.
+	confirm := func(prompt string) bool {
+		return yes || p.yesNo(prompt+" [y/N]", false)
+	}
 
 	// Step 0: maybe everything already works.
 	if c, err := llm.Detect(ctx, "", ""); err == nil {
@@ -70,7 +72,7 @@ func runLLMSetup(cmd *cobra.Command, model string, yes bool) error {
 	if _, err := exec.LookPath("ollama"); err != nil {
 		if runtime.GOOS == "darwin" {
 			if _, err := exec.LookPath("brew"); err == nil {
-				if !confirm(cmd, yes, "Install Ollama via Homebrew? (downloads ~30MB)") {
+				if !confirm("Install Ollama via Homebrew? (downloads ~30MB)") {
 					fmt.Fprintln(out, "Skipped. Install it yourself from https://ollama.com/download and rerun: hay llm setup")
 					return nil
 				}
@@ -106,7 +108,7 @@ func runLLMSetup(cmd *cobra.Command, model string, yes bool) error {
 
 	// Step 3: ensure a chat model is present (the one big download).
 	if _, err := llm.Detect(ctx, "http://localhost:11434/v1", ""); err != nil {
-		if !confirm(cmd, yes, fmt.Sprintf("Download the %s model? (about 2GB, one time)", model)) {
+		if !confirm(fmt.Sprintf("Download the %s model? (about 2GB, one time)", model)) {
 			fmt.Fprintf(out, "Skipped. Pull one yourself (ollama pull %s) and hay ask will find it.\n", model)
 			return nil
 		}
@@ -136,20 +138,6 @@ func verifyLLM(ctx context.Context, out io.Writer, c *llm.Client) error {
 	fmt.Fprintf(out, "works.\n\nhay ask is ready (%s · %s). Try:\n", c.BaseURL, c.Model)
 	fmt.Fprintln(out, `  hay ask "what do my documents say about …?"`)
 	return nil
-}
-
-// confirm asks y/N on the command's own streams so tests can script it.
-func confirm(cmd *cobra.Command, yes bool, prompt string) bool {
-	if yes {
-		return true
-	}
-	fmt.Fprintf(cmd.OutOrStdout(), "%s [y/N] ", prompt)
-	sc := bufio.NewScanner(cmd.InOrStdin())
-	if !sc.Scan() {
-		return false
-	}
-	answer := strings.ToLower(strings.TrimSpace(sc.Text()))
-	return answer == "y" || answer == "yes"
 }
 
 func ollamaUp(ctx context.Context) bool {

@@ -192,6 +192,13 @@ func (w *watcher) handleEvent(ev fsnotify.Event) {
 		}
 	}
 
+	// Editing the folder's config is an indexing instruction: reconcile
+	// so new exclude patterns take effect (and un-excluded files return).
+	if filepath.Base(ev.Name) == ingest.ConfigName {
+		w.debounced(root, job{kind: jobReconcile, sourceID: id, path: root})
+		return
+	}
+
 	switch {
 	case ev.Op.Has(fsnotify.Remove) || ev.Op.Has(fsnotify.Rename):
 		// The old path is gone; a full incremental pass prunes it (and
@@ -200,6 +207,13 @@ func (w *watcher) handleEvent(ev fsnotify.Event) {
 	case ev.Op.Has(fsnotify.Create) || ev.Op.Has(fsnotify.Write):
 		if !ingest.Supported(ev.Name) {
 			return
+		}
+		// Excluded paths generate events like any other; drop them here
+		// so the workers never index against the folder's config.
+		if cfg, err := ingest.LoadConfig(root); err == nil {
+			if rel, err := filepath.Rel(root, ev.Name); err == nil && cfg.Excluded(rel) {
+				return
+			}
 		}
 		w.debounced(ev.Name, job{kind: jobFile, sourceID: id, path: ev.Name})
 	}

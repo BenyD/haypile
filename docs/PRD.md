@@ -53,6 +53,7 @@ Buyer and user are different people. An IT consultant installs Haypile on an off
 ### 5.1 Commands
 
 ```
+hay init [folder]                # per-folder setup: .haypile.yml (tag, excludes), .mcp.json, optional LLM
 hay add <folder> [--tag <tag>]   # index a folder and watch it for changes
 hay search "<query>" [--tag]     # hybrid retrieval, results with citations
 hay ask "<question>"             # RAG answer with cited sources (requires a local LLM endpoint)
@@ -218,3 +219,4 @@ Standing habits from M0: (1) an eval set of ~10 queries with expected results, r
 2. **Chunk defaults: start at ~500 tokens with 10–15% overlap**, structure-aware splitting as specified in §6. This is a knob tuned by the eval harness at M1, not a decision to debate upfront; the eval set is the tie-breaker for all retrieval parameters.
 3. **MCP transport: Streamable HTTP first, stdio second.** The MCP spec (2025-11-25) recognizes exactly two transports — stdio and Streamable HTTP; HTTP+SSE is deprecated. Claude Code, Cursor, and Claude Desktop all support Streamable HTTP, and since the daemon already serves HTTP on :11500, this transport is nearly free. Ship a thin stdio proxy binary-mode (`hay mcp-stdio`) at M4 for clients that prefer launching a process.
 4. **Telemetry: none at launch, period.** "Zero external connections" and "anonymous usage pings" cannot share a README; the brand is the verifiable claim. Adoption is measured server-side without touching the user's machine: haypile.sh installer download counts (Cloudflare analytics), Homebrew tap analytics, GitHub stars/issues. Revisit only if a future opt-in mechanism can be loudly documented and off by default per §10.2.
+5. **`hay init` pulled into v1** (decided July 2026, ahead of the original v1.x slot). Per-folder `.haypile.yml` (tag + exclude globs) that the indexer and watcher honor — editing it reconciles the index live; a short wizard (PostHog-style: detect, confirm, never interrogate) that writes the config, indexes, optionally wires `.mcp.json` for Claude Code/Cursor, and offers `hay llm setup` only when no LLM is present. Every prompt has a flag; `--yes` runs unattended. Excludes were the missing primitive (no way to skip `drafts/**` before); the wizard is sugar over the config file, which stays the source of truth.

@@ -38,27 +38,43 @@ func TestLLMSetupAlreadyConfigured(t *testing.T) {
 	}
 }
 
-func TestConfirm(t *testing.T) {
+func TestPrompter(t *testing.T) {
 	tests := []struct {
 		input string
-		yes   bool
+		def   bool
 		want  bool
 	}{
 		{"y\n", false, true},
 		{"Y\n", false, true},
 		{"yes\n", false, true},
-		{"n\n", false, false},
-		{"\n", false, false}, // enter = default no
-		{"", false, false},   // closed stdin = no
-		{"", true, true},     // --yes skips the prompt entirely
-		{"nope\n", false, false},
+		{"n\n", true, false},
+		{"\n", false, false},     // enter = default
+		{"\n", true, true},       // enter = default
+		{"", false, false},       // closed stdin = default
+		{"what\n", false, false}, // unrecognized = default
 	}
 	for _, tt := range tests {
 		cmd := &cobra.Command{}
 		cmd.SetIn(strings.NewReader(tt.input))
 		cmd.SetOut(&bytes.Buffer{})
-		if got := confirm(cmd, tt.yes, "?"); got != tt.want {
-			t.Errorf("confirm(input=%q, yes=%v) = %v, want %v", tt.input, tt.yes, got, tt.want)
+		if got := newPrompter(cmd).yesNo("?", tt.def); got != tt.want {
+			t.Errorf("yesNo(input=%q, def=%v) = %v, want %v", tt.input, tt.def, got, tt.want)
 		}
+	}
+
+	// One prompter serves several questions off the same reader — the
+	// bug this type exists to prevent.
+	cmd := &cobra.Command{}
+	cmd.SetIn(strings.NewReader("alpha\n\ny\n"))
+	cmd.SetOut(&bytes.Buffer{})
+	p := newPrompter(cmd)
+	if got := p.line("?", "d1"); got != "alpha" {
+		t.Errorf("first line = %q", got)
+	}
+	if got := p.line("?", "d2"); got != "d2" {
+		t.Errorf("second line (empty) = %q, want default", got)
+	}
+	if !p.yesNo("?", false) {
+		t.Error("third prompt should read the y")
 	}
 }

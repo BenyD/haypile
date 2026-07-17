@@ -61,6 +61,18 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 		return stats, embedIfConfigured(st, sourceID, emb, &stats)
 	}
 
+	// The folder's own config supplies the tag default and the exclude
+	// patterns. Reconciliation is free: excluded files are never marked
+	// seen, so the prune pass below drops any that were indexed before
+	// the pattern existed.
+	cfg, err := LoadConfig(abs)
+	if err != nil {
+		return stats, err
+	}
+	if tag == "" {
+		tag = cfg.Tag
+	}
+
 	sourceID, err := st.AddSource(abs, tag)
 	if err != nil {
 		return stats, err
@@ -71,14 +83,21 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 		if err != nil {
 			return err
 		}
+		rel, relErr := filepath.Rel(abs, path)
+		if relErr != nil {
+			return relErr
+		}
 		if d.IsDir() {
 			// Skip hidden directories (.git and friends).
 			if name := d.Name(); strings.HasPrefix(name, ".") && path != abs {
 				return filepath.SkipDir
 			}
+			if rel != "." && cfg.Excluded(rel) {
+				return filepath.SkipDir
+			}
 			return nil
 		}
-		if !Supported(path) {
+		if !Supported(path) || cfg.Excluded(rel) {
 			return nil
 		}
 		// A file that fails to index is not pruned: its previous version

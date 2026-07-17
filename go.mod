@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-chi/chi/v5 v5.3.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect

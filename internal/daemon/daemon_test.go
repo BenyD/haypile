@@ -177,6 +177,33 @@ func TestDaemonRejectsBadRequests(t *testing.T) {
 	}
 }
 
+// TestDaemonReconcilesOnConfigEdit: editing .haypile.yml by hand while
+// the daemon runs re-syncs the index — newly excluded files drop out,
+// removing the pattern brings them back. No re-add, no restart.
+func TestDaemonReconcilesOnConfigEdit(t *testing.T) {
+	c := startDaemon(t)
+
+	docs := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(docs, "drafts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeDoc(t, docs, "final.md", "the signed lemur accord")
+	writeDoc(t, filepath.Join(docs, "drafts"), "wip.md", "the draft lemur accord")
+	if _, err := c.AddSource(docs, ""); err != nil {
+		t.Fatalf("AddSource: %v", err)
+	}
+	waitForHit(t, c, "lemur accord", "wip.md", true)
+
+	// Hand-edit the config: exclude drafts. The watcher must reconcile.
+	writeDoc(t, docs, ".haypile.yml", "exclude:\n  - drafts/**\n")
+	waitForHit(t, c, "lemur accord", "wip.md", false)
+	waitForHit(t, c, "lemur accord", "final.md", true) // the rest survives
+
+	// Remove the exclusion: the draft returns.
+	writeDoc(t, docs, ".haypile.yml", "exclude: []\n")
+	waitForHit(t, c, "lemur accord", "wip.md", true)
+}
+
 // TestMCPRoundTrip drives the daemon's MCP endpoint the way an editor
 // would: initialize, list tools, call search, and read cited passages.
 func TestMCPRoundTrip(t *testing.T) {

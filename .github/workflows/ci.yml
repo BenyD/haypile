@@ -52,3 +52,26 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: go build ./cmd/hay
+
+  # The marketing/docs site deploys straight from main, so a broken
+  # typecheck or build must fail here rather than in the deploy. `next
+  # build` runs its own TypeScript pass, which catches things `tsc`
+  # alone does not.
+  website:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: install
+        run: npm ci
+      - name: typecheck
+        run: npm run types:check
+      - name: build
+        run: npm run build

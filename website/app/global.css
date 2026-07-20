@@ -6,6 +6,15 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Tailwind v4 preflight leaves buttons on cursor: default; anything
+   clickable should read as clickable. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;

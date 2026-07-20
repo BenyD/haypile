@@ -37,7 +37,7 @@ const demo: Step[] = [
     ],
   },
   { kind: 'cmd', text: 'hay status' },
-  { kind: 'out', lines: ['Outbound connections: 0'], bright: true },
+  { kind: 'out', lines: ['Outbound connections: 0'] },
 ];
 
 /* Commands the interactive shell can ghost-complete, in suggestion
@@ -126,7 +126,7 @@ function run(line: string): Row[] {
         'Indexed:  1 source, 214 files',
         'Model:    bundled/all-MiniLM-L6-v2',
       ]),
-      ...out(['Outbound connections: 0'], true),
+      ...out(['Outbound connections: 0']),
       ...out(['']),
     ];
   if (cmd === 'hay list')

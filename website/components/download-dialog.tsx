@@ -55,7 +55,12 @@ export function DownloadButton() {
             </div>
 
             <div className="mt-6">
-              <p className="text-sm font-medium">macOS</p>
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-fd-muted-foreground" aria-hidden>
+                  <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.03 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.702z" />
+                </svg>
+                macOS
+              </p>
               <p className="mt-1 text-sm text-fd-muted-foreground">
                 Homebrew, updates with brew upgrade.
               </p>
@@ -65,7 +70,13 @@ export function DownloadButton() {
             </div>
 
             <div className="mt-6 border-t pt-6">
-              <p className="text-sm font-medium">Linux and macOS</p>
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-fd-muted-foreground" aria-hidden>
+                  <polyline points="4 17 10 11 4 5" />
+                  <line x1="12" y1="19" x2="20" y2="19" />
+                </svg>
+                Linux and macOS
+              </p>
               <p className="mt-1 text-sm text-fd-muted-foreground">
                 The install script detects your platform and fetches the
                 right binary from GitHub releases.
@@ -76,28 +87,38 @@ export function DownloadButton() {
             </div>
 
             <div className="mt-6 border-t pt-6">
-              <p className="text-sm font-medium">Windows and everything else</p>
-              <p className="mt-1 text-sm text-fd-muted-foreground">
-                One binary per platform. The embedding model is inside;
-                nothing else to fetch.
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-fd-muted-foreground" aria-hidden>
+                  <path d="M0 3.449 9.75 2.1v9.451H0zm10.949-1.5L24 0v11.4H10.949zM0 12.6h9.75v9.451L0 20.699zm10.949 0H24V24l-13.051-1.801z" />
+                </svg>
+                Windows
               </p>
-              <Link
-                href="https://github.com/BenyD/haypile/releases/latest"
-                className="mt-3 inline-block rounded-full border px-4 py-1.5 text-sm font-medium hover:bg-fd-accent"
-              >
-                Get it from GitHub
-              </Link>
+              <p className="mt-1 text-sm text-fd-muted-foreground">
+                Run in PowerShell. Installs hay.exe and adds it to your PATH,
+                no admin needed.
+              </p>
+              <div className="mt-3">
+                <CopyBar command="irm https://haypile.sh/install.ps1 | iex" />
+              </div>
             </div>
 
-            <p className="mt-6 text-sm text-fd-muted-foreground">
-              First time?{' '}
+            <p className="mt-6 border-t pt-6 text-sm text-fd-muted-foreground">
+              One binary per platform, embedding model inside. Grab it from{' '}
+              <Link
+                href="https://github.com/BenyD/haypile/releases/latest"
+                className="underline underline-offset-4 hover:text-fd-foreground"
+              >
+                GitHub releases
+              </Link>
+              , or follow the{' '}
               <Link
                 href="/docs"
                 className="underline underline-offset-4 hover:text-fd-foreground"
                 onClick={() => setOpen(false)}
               >
-                Follow the two minute tutorial
+                two minute tutorial
               </Link>
+              .
             </p>
           </div>
         </div>

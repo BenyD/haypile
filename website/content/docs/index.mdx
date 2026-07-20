@@ -37,7 +37,7 @@ hay --version
 
 ## 2. Index a folder
 
-Point Haypile at any folder with documents in it. PDF, docx, Markdown, and plain text are indexed; everything else is ignored.
+Point Haypile at any folder with documents in it. PDF, docx, pptx, HTML, Markdown, and plain text are indexed; everything else is ignored.
 
 ```sh
 hay add ~/Documents
@@ -46,12 +46,12 @@ hay add ~/Documents
 You will see each file scroll by, then a summary:
 
 ```
-Indexed 214 files (1,892 chunks), 0 unchanged.
-Embedded 1,892 chunks for semantic search (bundled/all-MiniLM-L6-v2).
+Indexed 214 files (1892 chunks), 0 unchanged.
+Embedded 1892 chunks for semantic search (bundled/all-MiniLM-L6-v2).
 Try: hay search "something you remember"
 ```
 
-Two things happened quietly here. First, everything went into a single SQLite file at `~/.haypile/haypile.db`; there is no server to configure and no database to babysit. Second, a small background daemon started and is now watching the folder, so any file you save becomes searchable within seconds.
+`hay add` also did the one-time setup: the index lives in a single SQLite file at `~/.haypile/haypile.db`, and a background daemon now watches the folder, re-indexing changed files within seconds. There is no server or database to manage.
 
 ## 3. Search
 
@@ -86,9 +86,9 @@ hay status
 ```
 
 ```
-Daemon:   running (0.1.0, up 42s)
+Daemon:   running (0.1.1, up 42s)
 Index:    ~/.haypile/haypile.db
-Indexed:  1 sources, 214 files, 1,892 chunks
+Indexed:  1 sources, 214 files, 1892 chunks
 Model:    bundled/all-MiniLM-L6-v2
 Outbound connections: 0
 ```
@@ -101,3 +101,5 @@ That last line is measured, not asserted. Haypile counts its own network connect
 - Prefer a browser to a terminal: [Use the web UI](/docs/guides/web)
 - Let Claude Code or Cursor search your documents: [Use Haypile from Claude Code](/docs/guides/claude-code)
 - Tag a folder and exclude drafts from the index: [Configure a folder](/docs/guides/folders)
+- Index scans and image-only PDFs: [Scanned PDFs (OCR)](/docs/guides/scanned-pdfs)
+- Update, stop the daemon, or uninstall: [Manage, update, uninstall](/docs/guides/manage)

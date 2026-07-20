@@ -33,6 +33,8 @@ Glob patterns matched against paths relative to the folder, gitignore flavored:
 
 Adding a pattern removes already-indexed matching files from the index on the next sync. Removing a pattern brings them back. A malformed pattern or broken YAML fails the indexing pass loudly rather than silently indexing everything.
 
+Hidden directories (`.git` and anything else starting with a dot) are always skipped; you do not need to exclude them.
+
 ## The data directory
 
 Everything Haypile stores lives in one place:
@@ -42,7 +44,13 @@ Everything Haypile stores lives in one place:
 | `~/.haypile/haypile.db` | The entire index: files, chunks, vectors, FTS. One SQLite file |
 | `~/.haypile/daemon.json` | Runtime file: the running daemon's address and pid |
 
-Set `HAYPILE_DIR` to relocate it. Deleting the directory deletes the index and nothing else; your documents are never touched. Back it up by copying one file.
+On Windows the same directory is `%USERPROFILE%\.haypile`. Set `HAYPILE_DIR` to relocate it. Deleting the directory deletes the index and nothing else; your documents are never touched. Back it up by copying one file.
+
+## Replacing the embedding model
+
+The bundled model is the default and the right choice for almost everyone. If you run an embedding server (Ollama and others expose one), `HAYPILE_EMBED_ENDPOINT` and `HAYPILE_EMBED_MODEL` switch Haypile to it, trading the zero-setup guarantee for a larger model.
+
+Vectors from different models are not comparable, so an index sticks with the model that embedded it: pointing an existing index at a different model is an error, not silent degradation. To switch, re-index (`hay remove` then `hay add`), or keep a separate index for the experiment with `HAYPILE_DIR`.
 
 ## Environment variables
 

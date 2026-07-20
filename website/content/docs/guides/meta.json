@@ -3,9 +3,11 @@
   "pages": [
     "search",
     "ask",
+    "scanned-pdfs",
     "web",
     "claude-code",
-    "folders"
+    "folders",
+    "manage"
   ],
   "defaultOpen": true
 }

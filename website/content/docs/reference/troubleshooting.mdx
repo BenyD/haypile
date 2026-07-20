@@ -1,0 +1,56 @@
+---
+title: Troubleshooting
+description: The errors you might actually see, what they mean, and the fix.
+---
+
+Symptoms first, in the words the tool uses. If yours is not here, the codebase is open and the error messages say what file they came from.
+
+## "listen 127.0.0.1:11500 (already running?)"
+
+`hay serve` found the port taken. Usually a daemon is already running, which is fine: every command talks to it automatically, and you do not need a second one. If something else owns the port, move Haypile:
+
+```sh
+hay serve --port 11600        # one-off
+export HAYPILE_ADDR=127.0.0.1:11600   # permanent
+```
+
+## Commands ignore the running daemon
+
+The CLI refuses to route through a daemon serving a different database, which happens when the daemon was started with a different `HAYPILE_DIR`. It falls back to direct index access, so results are still correct; watching is what you lose. Fix by restarting the daemon under the environment you want:
+
+```sh
+pkill -f "hay serve"
+hay add ~/Documents      # restarts it with the current HAYPILE_DIR
+```
+
+## "unsupported format (want .docx .htm .html .markdown .md .pdf .pptx .txt)"
+
+You pointed `hay add` at a single file of a type Haypile cannot parse. This errors only for single files, because you named that file deliberately; folder indexing skips unsupported files silently.
+
+## "Warning: N files could not be read and were skipped."
+
+Some files failed to open or parse: corrupt PDFs, permission problems, truncated downloads. One bad document never aborts an indexing pass, and if a previously indexed version of the file exists, it stays searchable until a readable version appears.
+
+## A scanned PDF returns no results
+
+Pages that are images need a local vision model to transcribe them; without one they index empty. See [Scanned PDFs (OCR)](/docs/guides/scanned-pdfs). After setting a model up, re-index the source: `hay remove <path> && hay add <path>`.
+
+## "no local LLM endpoint found"
+
+`hay ask` needs an OpenAI-compatible server and probed the usual ports without finding one. Run `hay llm setup` for the guided path, or point at your server: `hay ask --endpoint http://localhost:PORT/v1`. Search never needs an LLM; only `ask` does.
+
+## Saved changes are not showing up in search
+
+Check that the daemon is running with `hay status`; watching only happens while it is up. Files re-index within seconds of saving, so if the daemon is up and a result is still stale, re-run `hay add <folder>`. It is cheap (unchanged files are skipped) and reconciles everything, including deletions.
+
+## Index seems wrong in a way you cannot name
+
+The reset is safe and complete, because the index is derived data:
+
+```sh
+pkill -f "hay serve"
+rm -rf ~/.haypile
+hay add <your folders again>
+```
+
+Your documents are untouched; only the index is rebuilt.

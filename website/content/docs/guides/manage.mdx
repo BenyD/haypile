@@ -1,0 +1,54 @@
+---
+title: Manage, update, uninstall
+description: The daemon lifecycle, upgrading Haypile, and removing every trace of it.
+---
+
+Haypile runs itself: the daemon starts when needed and the index migrates on its own. This page covers the few lifecycle moments where you take the wheel.
+
+## The daemon lifecycle
+
+The daemon is a single background process serving the API on `127.0.0.1:11500` and watching your indexed folders. `hay add`, `hay web`, and `hay mcp-stdio` start it automatically when it is not running; its address and pid live in `~/.haypile/daemon.json`.
+
+To run it in the foreground instead, with logs in your terminal:
+
+```sh
+hay serve
+```
+
+To stop a background daemon:
+
+```sh
+pkill -f "hay serve"
+```
+
+Stopping it costs you nothing permanent. Search and every other command keep working through direct index access; folder watching pauses until the next command starts the daemon again.
+
+## Update
+
+However you installed, update the same way:
+
+```sh
+brew upgrade hay                      # Homebrew
+curl -fsSL haypile.sh | sh            # install script (replaces the binary)
+irm https://haypile.sh/install.ps1 | iex   # Windows PowerShell
+```
+
+Then restart the daemon so the new binary serves: `pkill -f "hay serve"` and run any `hay` command.
+
+Your index needs nothing from you across versions. There are no migrations to run, and when an update improves text extraction, affected files re-index themselves on the next pass; unchanged text hits the embedding cache, so even a full re-index is quick.
+
+## Uninstall
+
+Four steps remove every trace. Haypile never modifies your documents, so this is the complete list:
+
+```sh
+pkill -f "hay serve"          # 1. stop the daemon
+brew uninstall hay            # 2. remove the binary (script installs: rm /usr/local/bin/hay)
+rm -rf ~/.haypile             # 3. delete the index and runtime files
+```
+
+On Windows the binary lives under `%LOCALAPPDATA%\Programs\hay` and the data directory is `%USERPROFILE%\.haypile`.
+
+4. Folders set up with `hay init` may contain a `.haypile.yml` and `.mcp.json`; delete them if you do not want the config to apply on a future install.
+
+There is no account to close and nothing server-side to request deletion from, because nothing ever left your machine.

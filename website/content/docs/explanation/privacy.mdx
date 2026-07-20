@@ -37,7 +37,7 @@ Three cases involve the network, each explicitly yours to choose:
 
 **Installation.** Downloading the binary is a network act, once, from GitHub Releases. The install script does nothing else, and it is short enough to read first.
 
-**`hay llm setup` and `hay ask`.** Haypile ships no LLM. Answer generation talks to a server on your machine (Ollama, LM Studio, llama.cpp, Jan) over localhost. `hay llm setup` can download Ollama and a model for you; it asks before every download. Once the model is on disk, asking questions is fully offline.
+**`hay llm setup`, `hay ask`, and scanned-page OCR.** Haypile ships no LLM. Answer generation talks to a server on your machine (Ollama, LM Studio, llama.cpp, Jan) over localhost, and OCR of scanned PDF pages sends page images to that same local server, nowhere else. `hay llm setup` can download Ollama and a model for you; it asks before every download. Once the model is on disk, asking questions is fully offline.
 
 **MCP clients.** If you connect Claude Code or another cloud-backed agent to Haypile, the passages it retrieves become part of that agent's context, which the agent sends to its own provider. Haypile's behavior does not change; the agent's reach is what you are choosing. For a fully offline answer path, use `hay ask` with a local model.
 

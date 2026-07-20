@@ -90,6 +90,10 @@ Guided path to a working local LLM for `hay ask`: detects running servers, insta
 
 MCP stdio transport for clients that launch a process. Bridges stdin/stdout to the daemon's `/mcp` endpoint, auto-starting the daemon if needed.
 
+## hay completion \<shell\>
+
+Prints a shell autocompletion script for bash, zsh, fish, or powershell. `hay completion zsh --help` shows the install one-liner for your shell.
+
 ## Environment variables
 
 | Variable | Meaning |
@@ -100,7 +104,7 @@ MCP stdio transport for clients that launch a process. Bridges stdin/stdout to t
 | `HAYPILE_LLM_ENDPOINT` | OpenAI-compatible base URL for `hay ask` and scanned-page OCR |
 | `HAYPILE_LLM_MODEL` | Model name for `hay ask` |
 | `HAYPILE_OCR` | `off` disables OCR of scanned PDF pages |
-| `HAYPILE_OCR_MODEL` | Vision model to use for scanned-page OCR (default: first available chat model) |
+| `HAYPILE_OCR_MODEL` | Vision model to use for scanned-page OCR (default: first vision-looking model listed, else first chat model) |
 | `HAYPILE_EMBED_ENDPOINT` | Optional external embedding server (replaces the bundled model) |
 | `HAYPILE_EMBED_MODEL` | Model name for the embedding endpoint |
 | `HAYPILE_MODEL_PATH` | Dev builds: path to embedding weights on disk |

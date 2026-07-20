@@ -101,6 +101,28 @@ func (c *Client) OCRPage(ctx context.Context, pngImage []byte) (string, error) {
 	return strings.TrimSpace(parsed.Choices[0].Message.Content), nil
 }
 
+// visionModelHints ranks name fragments that mark a model as vision
+// capable. Dedicated OCR models beat general vision chat models; both
+// beat guessing blind.
+var visionModelHints = []string{
+	"ocr", // unlimited-ocr, hunyuanocr, deepseek-ocr, got-ocr
+	"-vl", "vl-",
+	"vision", "llava", "bakllava", "minicpm-v", "moondream", "pixtral",
+}
+
+// visionModelID returns the best vision-capable model id in ids by name
+// heuristic, or "" when none look the part.
+func visionModelID(ids []string) string {
+	for _, hint := range visionModelHints {
+		for _, id := range ids {
+			if strings.Contains(strings.ToLower(id), hint) {
+				return id
+			}
+		}
+	}
+	return ""
+}
+
 // OCRHook returns the transcriber ingest.SetOCR wants, or nil when OCR
 // is switched off. The endpoint is detected lazily on the first scanned
 // page — indexing a folder of text never probes anything — and a 4xx
@@ -108,7 +130,9 @@ func (c *Client) OCRPage(ctx context.Context, pngImage []byte) (string, error) {
 // process instead of failing page after page.
 //
 //	HAYPILE_OCR=off        disable OCR entirely
-//	HAYPILE_OCR_MODEL      vision model to request (default: first chat model)
+//	HAYPILE_OCR_MODEL      vision model to request (default: the first
+//	                       vision-looking model listed, else the first
+//	                       chat model)
 func OCRHook() func(pngImage []byte) (string, error) {
 	if os.Getenv("HAYPILE_OCR") == "off" {
 		return nil
@@ -124,10 +148,22 @@ func OCRHook() func(pngImage []byte) (string, error) {
 		once.Do(func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			c, err := Detect(ctx, "", os.Getenv("HAYPILE_OCR_MODEL"))
-			if err == nil {
-				client = c
+			explicit := os.Getenv("HAYPILE_OCR_MODEL")
+			c, err := Detect(ctx, "", explicit)
+			if err != nil {
+				return
 			}
+			// Nothing named for OCR: the default pick is the first chat
+			// model, which usually cannot see images. When the server
+			// lists a vision-looking model, prefer it.
+			if explicit == "" {
+				if ids, err := c.listModels(ctx); err == nil {
+					if v := visionModelID(ids); v != "" {
+						c.Model = v
+					}
+				}
+			}
+			client = c
 		})
 		mu.Lock()
 		dead := disabled || client == nil

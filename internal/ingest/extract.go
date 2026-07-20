@@ -56,6 +56,11 @@ func Extract(path string) ([]Section, error) {
 	if err != nil {
 		return nil, fmt.Errorf("extracting %s: %w", path, err)
 	}
+	// Every format can leak unsearchable codepoints (icon-font glyphs,
+	// control characters); scrub once here instead of per extractor.
+	for i := range secs {
+		secs[i].Text = stripJunk(secs[i].Text)
+	}
 	return secs, nil
 }
 

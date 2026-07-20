@@ -34,26 +34,14 @@ func SplitSections(sections []Section) []Chunk {
 		text := strings.ReplaceAll(sec.Text, "\r\n", "\n")
 
 		var buf strings.Builder
-		for _, para := range strings.Split(text, "\n\n") {
-			para = strings.TrimSpace(para)
-			if para == "" {
-				continue
-			}
-
-			if len(para) > chunkBudget {
-				emit(buf.String(), sec.Page)
-				buf.Reset()
-				for _, piece := range hardSplit(para) {
-					emit(piece, sec.Page)
-				}
-				continue
-			}
-
+		pack := func(para string) {
 			if buf.Len()+len(para)+2 > chunkBudget {
 				tail := overlapTail(buf.String())
 				emit(buf.String(), sec.Page)
 				buf.Reset()
-				if tail != "" {
+				// The tail is context, not content: drop it rather than
+				// let it push the next chunk past the budget.
+				if tail != "" && len(tail)+len(para)+2 <= chunkBudget {
 					buf.WriteString(tail)
 					buf.WriteString("\n\n")
 				}
@@ -61,9 +49,54 @@ func SplitSections(sections []Section) []Chunk {
 			buf.WriteString(para)
 			buf.WriteString("\n\n")
 		}
+
+		for _, para := range strings.Split(text, "\n\n") {
+			para = strings.TrimSpace(para)
+			if para == "" {
+				continue
+			}
+			if len(para) <= chunkBudget {
+				pack(para)
+				continue
+			}
+			// An oversized paragraph still has structure: break it at
+			// line boundaries and pack those. Only a single line bigger
+			// than the whole budget gets cut mid-text.
+			for _, piece := range packLines(para) {
+				pack(piece)
+			}
+		}
 		emit(buf.String(), sec.Page)
 	}
 	return chunks
+}
+
+// packLines splits an oversized paragraph into budget-sized pieces of
+// whole lines, so PDF pages and other line-broken text never get cut
+// mid-sentence when a byte boundary would do it.
+func packLines(para string) []string {
+	var pieces []string
+	var b strings.Builder
+	flush := func() {
+		if s := strings.TrimSpace(b.String()); s != "" {
+			pieces = append(pieces, s)
+		}
+		b.Reset()
+	}
+	for _, line := range strings.Split(para, "\n") {
+		if len(line) > chunkBudget {
+			flush()
+			pieces = append(pieces, hardSplit(line)...)
+			continue
+		}
+		if b.Len()+len(line)+1 > chunkBudget {
+			flush()
+		}
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	flush()
+	return pieces
 }
 
 // hardSplit cuts an oversized paragraph at word boundaries, each piece

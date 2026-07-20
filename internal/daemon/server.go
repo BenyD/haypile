@@ -19,6 +19,7 @@ import (
 	"github.com/BenyD/haypile/internal/embed"
 	"github.com/BenyD/haypile/internal/index"
 	"github.com/BenyD/haypile/internal/ingest"
+	"github.com/BenyD/haypile/internal/llm"
 	"github.com/BenyD/haypile/internal/query"
 )
 
@@ -53,6 +54,10 @@ func Run(ctx context.Context, addr, version string) error {
 	if err != nil {
 		return err
 	}
+
+	// Scanned PDF pages are transcribed by the user's local LLM when one
+	// is around; the hook probes lazily, so this costs nothing up front.
+	ingest.SetOCR(llm.OCRHook())
 
 	s := &Server{
 		st:      st,

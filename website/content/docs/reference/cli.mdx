@@ -28,7 +28,11 @@ Supported formats: `.pdf`, `.docx`, `.pptx`, `.md`, `.markdown`, `.txt`, `.html`
 
 ## hay web
 
-Opens the bundled local web UI in your browser: search as you type, ask with streamed answers, and click any citation to read the passage in place. Starts the daemon if needed; everything is served from `localhost:11500`. `--no-browser` prints the URL instead of opening it. Hidden directories and excluded patterns are skipped. A file that fails to parse is counted and skipped; it never aborts the pass.
+Opens the bundled local web UI in your browser: search as you type, ask with streamed answers, and click any citation to read the passage in place. Starts the daemon if needed; everything is served from `localhost:11500`.
+
+| Flag | Meaning | Default |
+| --- | --- | --- |
+| `--no-browser` | Print the URL instead of opening a browser | false |
 
 ## hay search "\<query\>"
 

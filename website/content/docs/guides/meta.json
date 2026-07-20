@@ -3,6 +3,7 @@
   "pages": [
     "search",
     "ask",
+    "web",
     "claude-code",
     "folders"
   ],

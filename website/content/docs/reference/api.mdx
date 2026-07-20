@@ -40,6 +40,48 @@ Response:
 
 `page` is 1-based and present for paginated formats; `0` means the format has no pages and `chunk` is the citation.
 
+## POST /api/ask
+
+Retrieval plus a streamed answer from your local LLM, as server-sent events. This is what `hay web` uses; point `curl -N` or an SSE client at it.
+
+```sh
+curl -sN -X POST localhost:11500/api/ask \
+  -d '{"question": "what notice period does the vendor agreement require?"}'
+```
+
+Request:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `question` | string | Required. The question to answer |
+| `tag` | string | Optional. Restrict retrieval to folders with this tag |
+| `limit` | int | Optional. Passages given to the model, default 6, cap 20 |
+
+The response is `text/event-stream` with four event types, in order:
+
+| Event | Data | Meaning |
+| --- | --- | --- |
+| `sources` | array of results with `label` | The retrieved passages, always first |
+| `token` | JSON string | One piece of the answer, repeated |
+| `error` | `{"message": "..."}` | Generation failed; the stream ends after this |
+| `done` | `{}` | Always last on success |
+
+Requires a local OpenAI-compatible server, same as `hay ask`.
+
+## GET /api/chunk
+
+The passage behind a citation, with its neighbors for context. The web UI's "read in place" view.
+
+```sh
+curl -s "localhost:11500/api/chunk?path=/Users/you/Documents/msa.pdf&chunk=11&window=1"
+```
+
+| Param | Meaning |
+| --- | --- |
+| `path` | Required. Source file path as returned by `/api/query` |
+| `chunk` | Required. Chunk ordinal from the result |
+| `window` | Neighboring chunks on each side, 0 to 5, default 1 |
+
 ## GET /api/health
 
 Liveness plus identity. Clients use `db` to confirm they are talking to the daemon for the right index.
@@ -68,6 +110,10 @@ curl -s -X POST localhost:11500/api/sources \
 ## DELETE /api/sources
 
 Un-index and un-watch. Body: `{"path": "..."}`. Returns `{"removed": true}` or `false` if the path was not indexed.
+
+## GET /api/browse and POST /api/pick
+
+Helpers for the web UI's folder picking; scripts rarely need them. `GET /api/browse?path=/abs/dir` lists a directory's subfolders and indexable files (defaults to the home directory). `POST /api/pick?kind=folder|file` opens the native OS file dialog and returns the chosen path; `204` means the user canceled, `501` means the platform has no dialog helper.
 
 ## POST /mcp
 

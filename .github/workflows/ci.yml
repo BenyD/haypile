@@ -29,6 +29,28 @@ jobs:
       - name: test
         run: go test ./... -race
 
+  # Tests run where users run: this leg keeps the platform-split code
+  # (netstat outbound count, drive browsing, the PowerShell picker)
+  # actually verified instead of merely cross-compiled. Kept out of the
+  # required checks until it earns a reputation for stability.
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6.5.0
+        with:
+          go-version-file: go.mod
+      - name: cache embedding model
+        uses: actions/cache@v6
+        with:
+          path: internal/embed/bundled/model.safetensors
+          key: minilm-l6-v2-safetensors
+      - name: fetch embedding model
+        run: ./hack/fetch-model.sh
+        shell: bash
+      - name: test
+        run: go test ./... -race
+
   # Cross-compilation must stay green from day one: once sqlite-vec (CGo)
   # lands, this matrix is the early-warning system for the project's
   # top-listed risk (see docs/ROADMAP.md).
@@ -72,6 +94,8 @@ jobs:
         run: npm ci
       - name: typecheck
         run: npm run check
+      - name: test
+        run: npm test
       - name: build
         run: npm run build
       - name: dist matches source

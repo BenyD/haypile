@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
 import tailwindcss from '@tailwindcss/vite';
@@ -14,5 +15,10 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:11500',
     },
+  },
+  // Logic tests only (SSE parsing, citation labels); components are
+  // covered by the daemon serving tests plus manual runs.
+  test: {
+    environment: 'node',
   },
 });

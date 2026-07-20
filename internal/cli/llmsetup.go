@@ -86,6 +86,10 @@ func runLLMSetup(cmd *cobra.Command, p *prompter, model string, yes bool) error 
 				fmt.Fprintln(out, "Install Ollama from https://ollama.com/download and rerun: hay llm setup")
 				return nil
 			}
+		} else if runtime.GOOS == "windows" {
+			fmt.Fprintln(out, "Install Ollama with: winget install -e --id Ollama.Ollama")
+			fmt.Fprintln(out, "(or from https://ollama.com/download), then rerun in a new terminal: hay llm setup")
+			return nil
 		} else {
 			fmt.Fprintln(out, "Install Ollama from https://ollama.com/download (Linux: curl -fsSL https://ollama.com/install.sh | sh) and rerun: hay llm setup")
 			return nil

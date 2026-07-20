@@ -29,6 +29,12 @@ That number is measured live against the running daemon's actual sockets, not as
 lsof -p $(pgrep -f "hay serve") -i TCP
 ```
 
+On Windows:
+
+```powershell
+Get-NetTCPConnection -OwningProcess (Get-Process hay).Id
+```
+
 You will find listeners on localhost and nothing else. Being auditable by standard tools, on an open codebase, is the point.
 
 ## The boundaries, honestly drawn

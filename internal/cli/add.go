@@ -10,6 +10,7 @@ import (
 	"github.com/BenyD/haypile/internal/embed"
 	"github.com/BenyD/haypile/internal/index"
 	"github.com/BenyD/haypile/internal/ingest"
+	"github.com/BenyD/haypile/internal/llm"
 )
 
 func newAddCmd() *cobra.Command {
@@ -61,6 +62,9 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 	if err != nil {
 		return stats, "", err
 	}
+	// Daemonless indexing still gets scanned-page OCR when a local LLM
+	// is up; the hook only probes if a textless PDF page shows up.
+	ingest.SetOCR(llm.OCRHook())
 	st, err := index.Open(index.DefaultPath())
 	if err != nil {
 		return stats, "", err

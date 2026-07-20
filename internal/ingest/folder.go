@@ -17,6 +17,12 @@ import (
 // embedBatch is how many chunks are sent to the embedder per call.
 const embedBatch = 64
 
+// extractVersion salts the stored content hash. Bump it whenever
+// extraction or chunking output changes, so already-indexed files stop
+// matching and re-index on the next pass; re-embedding stays cheap
+// because unchanged chunk text hits the embedding cache.
+const extractVersion = "2"
+
 // Stats reports what one IndexFolder pass did.
 type Stats struct {
 	Indexed  int // files (re)indexed this pass
@@ -136,7 +142,7 @@ func indexFile(st *index.Store, sourceID int64, path string, stats *Stats, progr
 		return nil
 	}
 	sum := sha256.Sum256(data)
-	sha := hex.EncodeToString(sum[:])
+	sha := hex.EncodeToString(sum[:]) + ":" + extractVersion
 
 	stored, err := st.FileSHA(path)
 	if err != nil {

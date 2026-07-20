@@ -5,11 +5,31 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
 	"github.com/BenyD/haypile/internal/ingest"
 )
+
+// drivesRoot is the virtual path one level above a Windows drive root.
+// Browsing it lists the machine's drives; other platforms have a real
+// filesystem root and never see it.
+const drivesRoot = "::drives"
+
+func driveListing() (*BrowseResponse, error) {
+	if runtime.GOOS != "windows" {
+		return nil, errors.New("path must be absolute")
+	}
+	resp := &BrowseResponse{Path: "Drives", Dirs: []BrowseDir{}, Files: []BrowseDir{}}
+	for l := 'A'; l <= 'Z'; l++ {
+		root := string(l) + `:\`
+		if _, err := os.Stat(root); err == nil {
+			resp.Dirs = append(resp.Dirs, BrowseDir{Name: root, Path: root})
+		}
+	}
+	return resp, nil
+}
 
 // BrowseDir is one directory entry in a browse listing.
 type BrowseDir struct {
@@ -41,6 +61,15 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		}
 		path = home
 	}
+	if path == drivesRoot {
+		resp, err := driveListing()
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
 	if !filepath.IsAbs(path) {
 		writeError(w, http.StatusBadRequest, errors.New("path must be absolute"))
 		return
@@ -56,6 +85,10 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	resp := BrowseResponse{Path: path, Dirs: []BrowseDir{}, Files: []BrowseDir{}}
 	if parent := filepath.Dir(path); parent != path {
 		resp.Parent = parent
+	} else if runtime.GOOS == "windows" {
+		// Above a drive root sits the drive list, so the picker can
+		// cross from C: to D: without typing a path.
+		resp.Parent = drivesRoot
 	}
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), ".") {

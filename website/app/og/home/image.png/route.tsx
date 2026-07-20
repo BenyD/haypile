@@ -1,9 +1,9 @@
 import { ImageResponse } from 'next/og';
-import { OGCard } from '@/components/og-card';
+import { OGCard, ogFonts } from '@/components/og-card';
 
 export const revalidate = false;
 
-export function GET() {
+export async function GET() {
   return new ImageResponse(
     (
       <OGCard
@@ -11,6 +11,6 @@ export function GET() {
         description="One binary. Fully local. Citations always."
       />
     ),
-    { width: 1200, height: 630 },
+    { width: 1200, height: 630, fonts: await ogFonts() },
   );
 }

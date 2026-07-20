@@ -1,7 +1,7 @@
 import { getPageImage, source } from '@/lib/source';
 import { notFound } from 'next/navigation';
 import { ImageResponse } from 'next/og';
-import { OGCard } from '@/components/og-card';
+import { OGCard, ogFonts } from '@/components/og-card';
 
 export const revalidate = false;
 
@@ -15,6 +15,7 @@ export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...
     {
       width: 1200,
       height: 630,
+      fonts: await ogFonts(),
     },
   );
 }

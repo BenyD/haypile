@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image/png"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -67,7 +68,14 @@ func extractPDF(path string) ([]Section, error) {
 	}
 	defer inst.Close()
 
-	doc, err := inst.OpenDocument(&requests.OpenDocument{FilePath: &path})
+	// The document goes in as bytes, never as a path: the WASM sandbox
+	// has its own filesystem view and cannot resolve OS paths (Windows
+	// volumes in particular). Reading here keeps extraction portable.
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("opening PDF: %w", err)
+	}
+	doc, err := inst.OpenDocument(&requests.OpenDocument{File: &data})
 	if err != nil {
 		return nil, fmt.Errorf("opening PDF: %w", err)
 	}

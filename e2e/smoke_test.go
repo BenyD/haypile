@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -24,6 +25,9 @@ func TestDaemonSmoke(t *testing.T) {
 	}
 
 	bin := filepath.Join(t.TempDir(), "hay")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
 	build := exec.Command("go", "build", "-race", "-o", bin, "../cmd/hay")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("building hay: %v\n%s", err, out)
@@ -45,7 +49,13 @@ func TestDaemonSmoke(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		serve.Process.Signal(syscall.SIGTERM)
+		if err := serve.Process.Signal(syscall.SIGTERM); err != nil {
+			// Windows cannot deliver SIGTERM; a hard kill is the only
+			// stop, so graceful shutdown is asserted on Unix only.
+			serve.Process.Kill()
+			serve.Wait()
+			return
+		}
 		done := make(chan error, 1)
 		go func() { done <- serve.Wait() }()
 		select {

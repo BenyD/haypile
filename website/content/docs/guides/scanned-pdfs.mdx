@@ -1,0 +1,67 @@
+---
+title: Scanned PDFs (OCR)
+description: Index image-only PDF pages by transcribing them with your local vision model.
+---
+
+Some PDFs carry no text at all: scans, faxes, photographed contracts. Haypile detects those pages, renders them, and has your local vision model transcribe them. The result indexes and cites by page like any other PDF, and the page images go to your local LLM server over localhost, nowhere else.
+
+## What you need
+
+A local OpenAI-compatible server with a vision-capable model. With Ollama:
+
+```sh
+ollama pull llava
+```
+
+Any vision model works; larger ones read small print and tables better. Without one, nothing breaks: scanned pages simply index empty and every other page works normally.
+
+## Which model gets used
+
+OCR prefers a vision-looking model from whatever your server lists: names containing `ocr` first (Unlimited-OCR, HunyuanOCR), then vision families like `-vl`, `vision`, `llava`, `minicpm-v`. If none match, it falls back to the first chat model. Override the choice explicitly:
+
+```sh
+export HAYPILE_OCR_MODEL=llava
+hay add ~/scans
+```
+
+If the selected model rejects images, OCR turns itself off for the rest of the pass instead of failing every page; the files still index with whatever text they have.
+
+## Heavier models for hard scans
+
+Dedicated OCR models read dense tables, small print, and messy scans better than general vision chat models. Baidu's Unlimited-OCR (MIT licensed, about 3B parameters) serves an OpenAI-compatible API through vLLM or SGLang; point Haypile at it like any other endpoint:
+
+```sh
+export HAYPILE_LLM_ENDPOINT=http://localhost:8000/v1
+hay add ~/scans
+```
+
+The model name contains `ocr`, so it is picked for transcription automatically. It wants a GPU; on a laptop without one, a small llava through Ollama is the practical choice.
+
+## How pages are chosen
+
+Only pages with no extractable text and at least one image are OCRed, so normal digital PDFs never pay the cost. Each qualifying page is rendered at 150 DPI and transcribed once at indexing time; searching is as fast as always afterwards. Expect a few seconds per scanned page, depending on the model and your hardware.
+
+## Verify it worked
+
+Index a scanned document, then search for text you can see on the page:
+
+```sh
+hay add ~/scans/lease-2019.pdf
+hay search "security deposit"
+```
+
+A hit citing `lease-2019.pdf (page 3)` means the transcription is in the index.
+
+If a scan was indexed before a vision model was available, its pages are empty in the index. Re-index that source to redo them:
+
+```sh
+hay remove ~/scans && hay add ~/scans
+```
+
+## Turning it off
+
+```sh
+export HAYPILE_OCR=off
+```
+
+Scanned pages then index empty, exactly as if no model were running.

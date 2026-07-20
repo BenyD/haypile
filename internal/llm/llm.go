@@ -101,21 +101,19 @@ func newClient(baseURL, model string) *Client {
 	}
 }
 
-// pickModel asks /models and keeps the first entry unless one is already
-// chosen. Embedding-only models are skipped by name heuristic — asking
-// an embedder to chat produces a confusing server error.
-func (c *Client) pickModel(ctx context.Context) error {
+// listModels asks /models and returns the ids in server order.
+func (c *Client) listModels(ctx context.Context) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/models", nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("endpoint returned %s", resp.Status)
+		return nil, fmt.Errorf("endpoint returned %s", resp.Status)
 	}
 
 	var parsed struct {
@@ -124,16 +122,31 @@ func (c *Client) pickModel(ctx context.Context) error {
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(parsed.Data))
+	for _, m := range parsed.Data {
+		ids = append(ids, m.ID)
+	}
+	return ids, nil
+}
+
+// pickModel keeps the first listed entry unless one is already chosen.
+// Embedding-only models are skipped by name heuristic — asking an
+// embedder to chat produces a confusing server error.
+func (c *Client) pickModel(ctx context.Context) error {
+	ids, err := c.listModels(ctx)
+	if err != nil {
 		return err
 	}
 	if c.Model != "" {
 		return nil // endpoint is alive and the model was chosen explicitly
 	}
-	for _, m := range parsed.Data {
-		if id := strings.ToLower(m.ID); strings.Contains(id, "embed") || strings.Contains(id, "minilm") {
+	for _, m := range ids {
+		if id := strings.ToLower(m); strings.Contains(id, "embed") || strings.Contains(id, "minilm") {
 			continue
 		}
-		c.Model = m.ID
+		c.Model = m
 		return nil
 	}
 	return fmt.Errorf("endpoint has no chat model loaded (hay ask --model <name> to force one)")

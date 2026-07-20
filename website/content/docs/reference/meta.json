@@ -3,7 +3,8 @@
   "pages": [
     "cli",
     "api",
-    "configuration"
+    "configuration",
+    "troubleshooting"
   ],
   "defaultOpen": true
 }

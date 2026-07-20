@@ -16,10 +16,10 @@ hay init
 Setting up /Users/you/cases/acme-litigation
 Tag for filtered search [acme-litigation]:
 Exclude patterns, comma-separated [none]: drafts/**, *.bak
+Wrote /Users/you/cases/acme-litigation/.haypile.yml
 Make these docs available to AI tools here (Claude Code, Cursor)? [Y/n]
-Wrote .haypile.yml
-Wrote .mcp.json (Claude Code will pick it up in this folder)
-Indexed 214 files (1,892 chunks), 0 unchanged.
+Wrote /Users/you/cases/acme-litigation/.mcp.json (Claude Code will pick it up in this folder)
+Indexed 214 files (1892 chunks), 0 unchanged.
 ```
 
 Three questions, each with a sensible default. If no local LLM is detected it also offers `hay llm setup` at the end.
@@ -42,7 +42,7 @@ exclude:
 ```
 
 - `tag` scopes searches: `hay search "deposition" --tag acme-litigation`
-- `exclude` takes gitignore-style glob patterns, matched against paths relative to the folder. `drafts/**` skips a subtree; `*.bak` skips matching files at any depth.
+- `exclude` takes gitignore-style glob patterns, matched against paths relative to the folder. `drafts/**` skips a subtree; `*.bak` skips matching files at any depth. Hidden directories like `.git` are always skipped without any pattern.
 
 ## Edit it anytime, by hand
 

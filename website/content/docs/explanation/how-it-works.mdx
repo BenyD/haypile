@@ -15,7 +15,7 @@ you <- citations <- fuse <- keyword search + vector search
 
 ### Extract
 
-Each format gets a real parser. PDFs go through PDFium, the same engine Chrome uses to render them, compiled to WebAssembly so it runs inside the Go binary with no native dependencies. Extraction is per page, and the page number travels with the text from here on; it is what makes `contract.pdf (page 12)` possible later. Word documents are unzipped and their XML parsed directly. Markdown is sectioned at its headings.
+Each format gets a real parser. PDFs go through PDFium, the same engine Chrome uses to render them, compiled to WebAssembly so it runs inside the Go binary with no native dependencies. Extraction is per page and layout-aware: paragraphs, headings, and bullets are rebuilt from the page geometry, and icon-font glyphs are dropped instead of indexed as junk. The page number travels with the text from here on; it is what makes `contract.pdf (page 12)` possible later. A page with no text layer but an image (a scan) is rendered and transcribed by your local vision LLM when one is running; without one it indexes empty. Word documents are unzipped and their XML parsed directly. Markdown is sectioned at its headings.
 
 ### Chunk
 

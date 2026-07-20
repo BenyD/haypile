@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -49,7 +50,7 @@ func newSearchCmd() *cobra.Command {
 				return nil
 			}
 			for i, r := range results {
-				fmt.Fprintf(out, "%2d. %s\n    %s\n", i+1, citation(r), r.Snippet)
+				fmt.Fprintf(out, "%2d. %s\n    %s\n", i+1, citation(r), oneLine(r.Snippet))
 			}
 			return nil
 		},
@@ -68,4 +69,11 @@ func citation(r index.Result) string {
 		return fmt.Sprintf("%s (page %d)", r.Path, r.Page)
 	}
 	return fmt.Sprintf("%s (chunk %d)", r.Path, r.Seq+1)
+}
+
+// oneLine flattens a snippet for terminal output: extracted text keeps
+// its source's hard line wraps (PDFs especially), which read as clutter
+// in a result list.
+func oneLine(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }

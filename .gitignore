@@ -27,3 +27,6 @@ internal/embed/bundled/model.q8.safetensors
 website/node_modules/
 website/out/
 website/.next/
+
+# Web UI toolchain (built output in internal/webui/dist IS committed)
+webui/node_modules/

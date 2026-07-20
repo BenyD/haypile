@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -21,6 +22,7 @@ import (
 	"github.com/BenyD/haypile/internal/ingest"
 	"github.com/BenyD/haypile/internal/llm"
 	"github.com/BenyD/haypile/internal/query"
+	"github.com/BenyD/haypile/internal/webui"
 )
 
 // DefaultAddr is where the daemon listens. Localhost only: the API has no
@@ -96,7 +98,8 @@ func Run(ctx context.Context, addr, version string) error {
 	}
 	defer removeRuntimeFile(s.dataDir)
 
-	s.http = &http.Server{Handler: s.routes()}
+	boundHost, _, _ := net.SplitHostPort(addr)
+	s.http = &http.Server{Handler: hostGuard(boundHost, originGuard(s.routes()))}
 	errc := make(chan error, 1)
 	go func() { errc <- s.http.Serve(ln) }()
 	fmt.Printf("hay daemon listening on http://%s\n", ln.Addr())
@@ -114,11 +117,64 @@ func Run(ctx context.Context, addr, version string) error {
 	}
 }
 
+// hostGuard rejects requests whose Host header does not name this
+// machine. A malicious web page can point its own domain's DNS at
+// 127.0.0.1 (DNS rebinding) and reach a localhost API from the victim's
+// browser — but the Host header still carries the attacker's domain,
+// so refusing unknown hosts closes the hole. When the daemon is bound
+// to a wildcard address the user has deliberately exposed it, and the
+// guard steps aside: it cannot know which external names are legit.
+func hostGuard(boundHost string, next http.Handler) http.Handler {
+	if boundHost == "" || boundHost == "0.0.0.0" || boundHost == "::" {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := r.Host
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		host = strings.Trim(host, "[]") // bare IPv6 literal
+		if host != "localhost" && host != "127.0.0.1" && host != "::1" && host != boundHost {
+			writeError(w, http.StatusForbidden,
+				fmt.Errorf("refusing request for host %q: this API answers only to localhost", host))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// originGuard is the CSRF companion to hostGuard. A malicious page on
+// any website can fire blind cross-site POSTs at localhost; the browser
+// stamps those with the page's Origin, while same-origin requests from
+// the web UI carry our own localhost origin and non-browser clients
+// (CLI, curl, MCP editors) send none. Only a foreign origin is refused.
+func originGuard(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if o := r.Header.Get("Origin"); o != "" && o != "null" {
+			host := strings.TrimPrefix(strings.TrimPrefix(o, "https://"), "http://")
+			if h, _, err := net.SplitHostPort(host); err == nil {
+				host = h
+			}
+			host = strings.Trim(host, "[]")
+			if host != "localhost" && host != "127.0.0.1" && host != "::1" {
+				writeError(w, http.StatusForbidden,
+					fmt.Errorf("refusing cross-site request from origin %q", o))
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Server) routes() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/api/health", s.handleHealth)
 	r.Get("/api/status", s.handleStatus)
 	r.Post("/api/query", s.handleQuery)
+	r.Post("/api/ask", s.handleAsk)
+	r.Get("/api/chunk", s.handleChunk)
+	r.Get("/api/browse", s.handleBrowse)
+	r.Post("/api/pick", s.handlePick)
 	r.Get("/api/sources", s.handleSources)
 	r.Post("/api/sources", s.handleAddSource)
 	r.Delete("/api/sources", s.handleRemoveSource)
@@ -127,6 +183,9 @@ func (s *Server) routes() http.Handler {
 		// No server-initiated streams: this server only answers requests.
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
+	// Everything else is the bundled web UI (hay web). Exact routes above
+	// win; chi only falls through to the catch-all.
+	r.Handle("/*", webui.Handler())
 	return r
 }
 

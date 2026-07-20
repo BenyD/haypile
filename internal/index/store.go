@@ -323,6 +323,51 @@ type Result struct {
 	Score   float64
 }
 
+// Passage is one chunk with its full text, as served by the chunk-context
+// API: a cited chunk plus its neighbors so a citation can be read in
+// place.
+type Passage struct {
+	Seq     int    `json:"chunk"`
+	Page    int    `json:"page,omitempty"` // 1-based; 0 = format has no pages
+	Text    string `json:"text"`
+	Current bool   `json:"current"` // the chunk the citation points at
+}
+
+// ChunkContext returns the chunk at seq in the file at path together
+// with up to window neighbors on each side, in order. An empty slice
+// means the file (or that chunk) is not in the index.
+func (s *Store) ChunkContext(path string, seq, window int) ([]Passage, error) {
+	rows, err := s.db.Query(`
+		SELECT c.seq, c.page, c.text
+		FROM chunks c
+		JOIN files f ON f.id = c.file_id
+		WHERE f.path = ? AND c.seq BETWEEN ? AND ?
+		ORDER BY c.seq`, path, seq-window, seq+window)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Passage
+	found := false
+	for rows.Next() {
+		var p Passage
+		if err := rows.Scan(&p.Seq, &p.Page, &p.Text); err != nil {
+			return nil, err
+		}
+		p.Current = p.Seq == seq
+		found = found || p.Current
+		out = append(out, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, nil // neighbors without the cited chunk are not context
+	}
+	return out, nil
+}
+
 // Search runs a ranked FTS5 keyword query; every word must match. tag
 // narrows results to sources indexed with that tag; empty tag searches
 // everything.

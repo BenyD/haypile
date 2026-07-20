@@ -1,11 +1,16 @@
 package daemon
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -287,5 +292,374 @@ func TestDiscoverRejectsWrongDatabase(t *testing.T) {
 	}
 	if got := Discover(); got != nil {
 		t.Fatal("Discover trusted a daemon serving a different database")
+	}
+}
+
+// rawGet issues a request against the daemon with a spoofed Host header,
+// as a DNS-rebinding page would.
+func rawGet(t *testing.T, c *Client, path, hostHeader string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, c.base+path, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hostHeader != "" {
+		req.Host = hostHeader
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET %s: %v", path, err)
+	}
+	t.Cleanup(func() { resp.Body.Close() })
+	return resp
+}
+
+func TestHostGuardBlocksRebinding(t *testing.T) {
+	c := startDaemon(t)
+
+	if resp := rawGet(t, c, "/api/health", "evil.example.com"); resp.StatusCode != http.StatusForbidden {
+		t.Errorf("spoofed Host got %d, want 403", resp.StatusCode)
+	}
+	// Legit local names keep working, port or not.
+	for _, h := range []string{"", "localhost:11500", "127.0.0.1:11500", "localhost"} {
+		if resp := rawGet(t, c, "/api/health", h); resp.StatusCode != http.StatusOK {
+			t.Errorf("Host %q got %d, want 200", h, resp.StatusCode)
+		}
+	}
+	// The MCP surface is guarded too.
+	if resp := rawGet(t, c, "/mcp", "evil.example.com"); resp.StatusCode != http.StatusForbidden {
+		t.Errorf("spoofed Host on /mcp got %d, want 403", resp.StatusCode)
+	}
+}
+
+// fakeChatServer is a minimal OpenAI-compatible endpoint: lists one chat
+// model and streams a canned answer.
+func fakeChatServer(t *testing.T, answer string) *httptest.Server {
+	t.Helper()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/models":
+			fmt.Fprint(w, `{"data":[{"id":"fake-chat"}]}`)
+		case "/chat/completions":
+			w.Header().Set("Content-Type", "text/event-stream")
+			for _, word := range strings.SplitAfter(answer, " ") {
+				b, _ := json.Marshal(word)
+				fmt.Fprintf(w, "data: {\"choices\":[{\"delta\":{\"content\":%s}}]}\n\n", b)
+			}
+			fmt.Fprint(w, "data: [DONE]\n\n")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+// sseEvents parses an SSE body into (event, data) pairs.
+func sseEvents(t *testing.T, body io.Reader) [][2]string {
+	t.Helper()
+	var events [][2]string
+	var name string
+	sc := bufio.NewScanner(body)
+	for sc.Scan() {
+		line := sc.Text()
+		if strings.HasPrefix(line, "event: ") {
+			name = strings.TrimPrefix(line, "event: ")
+		}
+		if strings.HasPrefix(line, "data: ") {
+			events = append(events, [2]string{name, strings.TrimPrefix(line, "data: ")})
+		}
+	}
+	if err := sc.Err(); err != nil {
+		t.Fatalf("reading SSE: %v", err)
+	}
+	return events
+}
+
+func TestAskStreamsAnswerWithSources(t *testing.T) {
+	llm := fakeChatServer(t, "Sixty days written notice applies [1].")
+	t.Setenv("HAYPILE_LLM_ENDPOINT", llm.URL)
+
+	c := startDaemon(t)
+	docs := t.TempDir()
+	writeDoc(t, docs, "contract.md", "# Termination\n\nEither party may terminate with sixty days written notice.")
+	if _, err := c.AddSource(docs, ""); err != nil {
+		t.Fatalf("AddSource: %v", err)
+	}
+	waitForHit(t, c, "sixty days notice", "contract.md", true)
+
+	resp, err := http.Post(c.base+"/api/ask", "application/json",
+		strings.NewReader(`{"question": "what notice period applies?"}`))
+	if err != nil {
+		t.Fatalf("POST /api/ask: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("ask returned %d", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "text/event-stream" {
+		t.Fatalf("Content-Type = %q, want text/event-stream", ct)
+	}
+
+	events := sseEvents(t, resp.Body)
+	if len(events) < 3 {
+		t.Fatalf("only %d events: %v", len(events), events)
+	}
+	if events[0][0] != "sources" {
+		t.Errorf("first event = %s, want sources", events[0][0])
+	}
+	var sources []AskSource
+	if err := json.Unmarshal([]byte(events[0][1]), &sources); err != nil || len(sources) == 0 {
+		t.Fatalf("bad sources payload %q: %v", events[0][1], err)
+	}
+	if !strings.HasSuffix(sources[0].Path, "contract.md") || sources[0].Label == "" {
+		t.Errorf("source missing citation: %+v", sources[0])
+	}
+
+	var answer strings.Builder
+	sawDone := false
+	for _, ev := range events[1:] {
+		switch ev[0] {
+		case "token":
+			var tok string
+			if err := json.Unmarshal([]byte(ev[1]), &tok); err != nil {
+				t.Fatalf("bad token %q: %v", ev[1], err)
+			}
+			answer.WriteString(tok)
+		case "done":
+			sawDone = true
+		case "error":
+			t.Fatalf("unexpected error event: %s", ev[1])
+		}
+	}
+	if got := answer.String(); got != "Sixty days written notice applies [1]." {
+		t.Errorf("streamed answer = %q", got)
+	}
+	if !sawDone {
+		t.Error("stream did not end with done")
+	}
+}
+
+func TestAskWithoutLLMIs503(t *testing.T) {
+	// An explicit endpoint that answers nothing: Detect must fail fast.
+	t.Setenv("HAYPILE_LLM_ENDPOINT", "http://127.0.0.1:1")
+
+	c := startDaemon(t)
+	resp, err := http.Post(c.base+"/api/ask", "application/json",
+		strings.NewReader(`{"question": "anything"}`))
+	if err != nil {
+		t.Fatalf("POST /api/ask: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("got %d, want 503", resp.StatusCode)
+	}
+	var body struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil || body.Error == "" {
+		t.Fatalf("503 without an explanation: %v (%v)", body, err)
+	}
+}
+
+func TestChunkContextAPI(t *testing.T) {
+	c := startDaemon(t)
+	docs := t.TempDir()
+	path := writeDoc(t, docs, "notes.md", "# One\n\nfirst section\n\n# Two\n\nsecond section\n\n# Three\n\nthird section")
+	if _, err := c.AddSource(docs, ""); err != nil {
+		t.Fatalf("AddSource: %v", err)
+	}
+	waitForHit(t, c, "second section", "notes.md", true)
+
+	resp := rawGet(t, c, "/api/chunk?chunk=1&path="+url.QueryEscape(path), "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("chunk API returned %d", resp.StatusCode)
+	}
+	var out struct {
+		Path     string `json:"path"`
+		Passages []struct {
+			Chunk   int    `json:"chunk"`
+			Text    string `json:"text"`
+			Current bool   `json:"current"`
+		} `json:"passages"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(out.Passages) != 3 {
+		t.Fatalf("got %d passages, want 3 (neighbors both sides): %+v", len(out.Passages), out)
+	}
+	if !out.Passages[1].Current || !strings.Contains(out.Passages[1].Text, "second section") {
+		t.Errorf("middle passage wrong: %+v", out.Passages[1])
+	}
+
+	if resp := rawGet(t, c, "/api/chunk?chunk=99&path="+url.QueryEscape(path), ""); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("out-of-range chunk got %d, want 404", resp.StatusCode)
+	}
+	if resp := rawGet(t, c, "/api/chunk?chunk=0", ""); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("missing path got %d, want 400", resp.StatusCode)
+	}
+}
+
+func TestDaemonServesWebUI(t *testing.T) {
+	c := startDaemon(t)
+
+	resp := rawGet(t, c, "/", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET / = %d, want 200", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+		t.Errorf("Content-Type = %q, want text/html", ct)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), `id="root"`) {
+		t.Error("web UI shell not served at /")
+	}
+
+	// The UI sits behind the host guard like everything else.
+	if resp := rawGet(t, c, "/", "evil.example.com"); resp.StatusCode != http.StatusForbidden {
+		t.Errorf("spoofed Host on / got %d, want 403", resp.StatusCode)
+	}
+	// API 404s stay JSON errors, not the UI fallback.
+	if resp := rawGet(t, c, "/api/nope", ""); strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") {
+		t.Error("unknown /api route fell through to the web UI")
+	}
+}
+
+func TestBrowseAPI(t *testing.T) {
+	c := startDaemon(t)
+
+	dir := t.TempDir()
+	for _, d := range []string{"beta", "alpha", ".hidden"} {
+		if err := os.Mkdir(filepath.Join(dir, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeDoc(t, dir, "notes.txt", "indexable")
+	writeDoc(t, dir, "photo.jpg", "not indexable")
+
+	resp := rawGet(t, c, "/api/browse?path="+url.QueryEscape(dir), "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("browse returned %d", resp.StatusCode)
+	}
+	var out struct {
+		Path   string `json:"path"`
+		Parent string `json:"parent"`
+		Dirs   []struct {
+			Name string `json:"name"`
+			Path string `json:"path"`
+		} `json:"dirs"`
+		Files []struct {
+			Name string `json:"name"`
+		} `json:"files"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.Path != dir || out.Parent == "" {
+		t.Errorf("path/parent wrong: %+v", out)
+	}
+	// Sorted, dotfolders hidden.
+	if len(out.Dirs) != 2 || out.Dirs[0].Name != "alpha" || out.Dirs[1].Name != "beta" {
+		t.Errorf("dirs = %+v, want [alpha beta]", out.Dirs)
+	}
+	// Only indexable files are offered; the jpg stays invisible.
+	if len(out.Files) != 1 || out.Files[0].Name != "notes.txt" {
+		t.Errorf("files = %+v, want [notes.txt]", out.Files)
+	}
+
+	if resp := rawGet(t, c, "/api/browse?path=relative/nope", ""); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("relative path got %d, want 400", resp.StatusCode)
+	}
+	// No path browses the home directory.
+	if resp := rawGet(t, c, "/api/browse", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("default browse got %d, want 200", resp.StatusCode)
+	}
+}
+
+// TestOriginGuardBlocksCrossSite: a web page on any site can fire blind
+// POSTs at localhost APIs (classic CSRF); the browser stamps them with
+// the page's Origin, and the daemon must refuse foreign ones.
+func TestOriginGuardBlocksCrossSite(t *testing.T) {
+	c := startDaemon(t)
+
+	post := func(origin string) int {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodPost, c.base+"/api/sources",
+			strings.NewReader(`{"path": "/tmp/nope"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+
+	if code := post("https://evil.example.com"); code != http.StatusForbidden {
+		t.Errorf("cross-site origin got %d, want 403", code)
+	}
+	// Same-origin from the web UI and dev-server origins stay allowed
+	// (they fail on the bogus path, not on the origin).
+	for _, o := range []string{"", "http://localhost:11500", "http://127.0.0.1:5173"} {
+		if code := post(o); code == http.StatusForbidden {
+			t.Errorf("origin %q was wrongly forbidden", o)
+		}
+	}
+}
+
+// TestPickAPI drives the native-picker endpoint with the dialog stubbed
+// out; real dialogs have no place in CI.
+func TestPickAPI(t *testing.T) {
+	c := startDaemon(t)
+
+	orig := nativePick
+	t.Cleanup(func() { nativePick = orig })
+
+	post := func(query string) *http.Response {
+		t.Helper()
+		resp, err := http.Post(c.base+"/api/pick"+query, "application/json", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { resp.Body.Close() })
+		return resp
+	}
+
+	nativePick = func(ctx context.Context, kind string) (string, error) {
+		return "/picked/" + kind, nil
+	}
+	resp := post("?kind=folder")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("pick returned %d", resp.StatusCode)
+	}
+	var out struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || out.Path != "/picked/folder" {
+		t.Fatalf("path = %q, err %v", out.Path, err)
+	}
+
+	nativePick = func(ctx context.Context, kind string) (string, error) {
+		return "", errPickCanceled
+	}
+	if resp := post("?kind=file"); resp.StatusCode != http.StatusNoContent {
+		t.Errorf("cancel returned %d, want 204", resp.StatusCode)
+	}
+
+	nativePick = func(ctx context.Context, kind string) (string, error) {
+		return "", errors.New("no display")
+	}
+	if resp := post("?kind=folder"); resp.StatusCode != http.StatusNotImplemented {
+		t.Errorf("unsupported returned %d, want 501", resp.StatusCode)
+	}
+
+	if resp := post("?kind=everything"); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("bad kind returned %d, want 400", resp.StatusCode)
 	}
 }

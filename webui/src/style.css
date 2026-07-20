@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+
+/* The theme boot script resolves the stored preference to a concrete
+   light/dark on <html data-theme>; dark: utilities key off that. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@theme {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* One easing for every interactive transition: swift out, no bounce. */
+  --ease-swift: cubic-bezier(0.2, 0, 0, 1);
+
+  --animate-enter: enter 0.35s var(--ease-swift) both;
+  --animate-panel-in: panel-in 0.28s var(--ease-swift);
+  --animate-pop-in: pop-in 0.22s var(--ease-swift);
+  --animate-fade-in: fade-in 0.18s ease-out;
+}
+
+@keyframes enter {
+  from { opacity: 0; translate: 0 8px; filter: blur(2px); }
+}
+@keyframes panel-in {
+  from { opacity: 0; translate: 20px 0; }
+}
+@keyframes pop-in {
+  from { opacity: 0; scale: 0.98; translate: 0 6px; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+html {
+  background: var(--color-white);
+}
+html[data-theme='dark'] {
+  background: var(--color-neutral-950);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tailwind v4 preflight leaves buttons on cursor: default; anything
+   clickable should read as clickable. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}

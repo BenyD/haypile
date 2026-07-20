@@ -133,6 +133,7 @@ hay ask "<question>"     answer from your documents, with cited sources
 hay list                 indexed folders and document counts
 hay remove <path>        un-index a folder
 hay status               daemon state, model info, outbound connections (target: 0)
+hay web                  open the local web UI in your browser
 hay serve                run the daemon (REST API + MCP on localhost:11500)
 hay llm setup            guided local LLM setup for hay ask
 ```
@@ -141,9 +142,8 @@ hay llm setup            guided local LLM setup for hay ask
 
 | Version | Scope |
 |---|---|
-| v0.x (now) | CLI, REST API, MCP server. Markdown, text, PDF, docx, pptx, HTML. |
-| v1.x | OCR for scanned PDFs, Windows installer polish |
-| v1.5 | `hay web`: bundled local web UI (free, AGPL): search box, answer, click citation, see source |
+| v0.x (now) | CLI, REST API, MCP server, `hay web` local UI. Markdown, text, PDF, docx, pptx, HTML. Scanned-PDF OCR via your local vision LLM. |
+| v1.x | Bundled OCR (no LLM required), Windows installer polish |
 | v2 | Optional larger embedding models, ANN index for very large corpora |
 | Pro | Team layer for offices: auth, roles, audit logs, shared indexes (paid) |
 
@@ -165,6 +165,14 @@ HAYPILE_MODEL_PATH=internal/embed/bundled/model.safetensors ./hay   # dev
 ```
 
 Without the model, everything still works in keyword-only mode.
+
+The web UI (`hay web`) lives in [webui/](webui/) as a small Vite + Preact app; its built output is committed under `internal/webui/dist` and embedded in the binary, so `go build` alone always ships the current UI. Touch the UI with:
+
+```sh
+cd webui && npm install
+npm run dev      # live dev server, proxies /api to a running daemon
+npm run build    # writes internal/webui/dist (commit the result)
+```
 
 Retrieval quality is measured, not vibes: [eval/](eval/) holds a query set with expected results that runs on every retrieval-affecting change.
 

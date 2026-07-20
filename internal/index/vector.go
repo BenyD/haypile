@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 )
 
 // EmbedModel returns the model this index's vectors were built with, or ""
@@ -110,7 +111,11 @@ func (s *Store) PutEmbedding(chunkID int64, sha, model string, vec []float32) er
 // are L2-normalized, so this is cosine similarity). Brute force is the v1
 // strategy per the roadmap: linear scan is well within budget at personal-corpus
 // scale, and an ANN index is a v2 concern.
-func (s *Store) VectorSearch(query []float32, tag string, limit int) ([]Result, error) {
+//
+// terms are the query's literal words: when a matched chunk contains one,
+// the snippet centers on it so the result shows why it matched instead of
+// whatever the chunk happens to start with.
+func (s *Store) VectorSearch(query []float32, terms []string, tag string, limit int) ([]Result, error) {
 	rows, err := s.db.Query(`
 		SELECT f.path, c.seq, c.page, c.text, e.vector
 		FROM embeddings e
@@ -132,7 +137,7 @@ func (s *Store) VectorSearch(query []float32, tag string, limit int) ([]Result, 
 			return nil, err
 		}
 		r.Score = float64(dot(query, blobToVec(blob)))
-		r.Snippet = excerpt(text, 160)
+		r.Snippet = excerptAround(text, terms, 160)
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {
@@ -155,6 +160,45 @@ func dot(a, b []float32) float32 {
 		sum += a[i] * b[i]
 	}
 	return sum
+}
+
+// excerptAround cuts a window around the first query term found in text,
+// falling back to the chunk's head when no literal term appears (a purely
+// semantic match has nothing to center on).
+func excerptAround(text string, terms []string, max int) string {
+	lower := strings.ToLower(text)
+	at := -1
+	for _, t := range terms {
+		t = strings.ToLower(strings.TrimSpace(t))
+		if len(t) < 2 {
+			continue
+		}
+		if i := strings.Index(lower, t); i >= 0 && (at == -1 || i < at) {
+			at = i
+		}
+	}
+	if at <= 0 {
+		return excerpt(text, max)
+	}
+
+	start := at - max/3
+	if start < 0 {
+		start = 0
+	}
+	for start > 0 && text[start]&0xC0 == 0x80 { // don't split a UTF-8 rune
+		start--
+	}
+	// Step forward to the next word boundary so the window opens cleanly.
+	if start > 0 {
+		if sp := strings.IndexAny(text[start:min(start+40, len(text))], " \n\t"); sp >= 0 {
+			start += sp + 1
+		}
+	}
+	out := excerpt(text[start:], max)
+	if start > 0 {
+		out = "…" + out
+	}
+	return out
 }
 
 func excerpt(text string, max int) string {

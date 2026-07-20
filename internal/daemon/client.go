@@ -81,6 +81,9 @@ func AutoStart() (*Client, error) {
 // MCPURL is the daemon's Streamable HTTP MCP endpoint.
 func (c *Client) MCPURL() string { return c.base + "/mcp" }
 
+// BaseURL is the daemon's root, where the web UI is served.
+func (c *Client) BaseURL() string { return c.base }
+
 func (c *Client) health() (Health, error) {
 	var h Health
 	// Health must answer fast even when the daemon is busy indexing.

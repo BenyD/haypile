@@ -149,3 +149,46 @@ func TestQuerySyntaxCannotBreakSearch(t *testing.T) {
 		t.Errorf("blank query should error")
 	}
 }
+
+func TestChunkContext(t *testing.T) {
+	st := openTestStore(t)
+
+	srcID, err := st.AddSource("/docs", "")
+	if err != nil {
+		t.Fatalf("AddSource: %v", err)
+	}
+	if err := st.UpsertFile(srcID, "/docs/contract.md", "sha1", 100, 1, chunksOf(
+		"chunk zero", "chunk one", "chunk two", "chunk three",
+	)); err != nil {
+		t.Fatalf("UpsertFile: %v", err)
+	}
+
+	// Middle chunk: both neighbors, current flagged.
+	ps, err := st.ChunkContext("/docs/contract.md", 2, 1)
+	if err != nil {
+		t.Fatalf("ChunkContext: %v", err)
+	}
+	if len(ps) != 3 || ps[0].Seq != 1 || ps[1].Seq != 2 || ps[2].Seq != 3 {
+		t.Fatalf("window wrong: %+v", ps)
+	}
+	if !ps[1].Current || ps[0].Current || ps[2].Current {
+		t.Errorf("Current flags wrong: %+v", ps)
+	}
+	if ps[1].Text != "chunk two" {
+		t.Errorf("cited text = %q, want chunk two", ps[1].Text)
+	}
+
+	// First chunk: window clips at the start.
+	ps, err = st.ChunkContext("/docs/contract.md", 0, 1)
+	if err != nil || len(ps) != 2 || !ps[0].Current {
+		t.Fatalf("start-of-file window: %+v, err %v", ps, err)
+	}
+
+	// Unknown file and out-of-range chunk are both "no context".
+	if ps, _ := st.ChunkContext("/docs/nope.md", 0, 1); ps != nil {
+		t.Errorf("unknown file gave %+v, want nil", ps)
+	}
+	if ps, _ := st.ChunkContext("/docs/contract.md", 99, 1); ps != nil {
+		t.Errorf("out-of-range chunk gave %+v, want nil", ps)
+	}
+}

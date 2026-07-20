@@ -58,20 +58,33 @@ export function LegalToc({
 }) {
   const [active, setActive] = useState(sections[0]?.id);
 
+  /* Active = the last section whose heading has crossed the reading
+     line. An intersection band cannot do this: sections near the end
+     are shorter than the remaining scroll room and would never
+     activate, so the bottom of the page explicitly wins for the last
+     section. */
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) setActive(e.target.id);
-        }
-      },
-      { rootMargin: '-20% 0px -70% 0px' },
-    );
-    for (const s of sections) {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
+    const pick = () => {
+      const doc = document.documentElement;
+      if (window.innerHeight + window.scrollY >= doc.scrollHeight - 2) {
+        setActive(sections[sections.length - 1]?.id);
+        return;
+      }
+      const line = window.innerHeight * 0.25;
+      let current = sections[0]?.id;
+      for (const s of sections) {
+        const el = document.getElementById(s.id);
+        if (el && el.getBoundingClientRect().top <= line) current = s.id;
+      }
+      setActive(current);
+    };
+    pick();
+    window.addEventListener('scroll', pick, { passive: true });
+    window.addEventListener('resize', pick);
+    return () => {
+      window.removeEventListener('scroll', pick);
+      window.removeEventListener('resize', pick);
+    };
   }, [sections]);
 
   return (

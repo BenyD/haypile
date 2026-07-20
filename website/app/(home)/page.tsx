@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Terminal, type Step } from '@/components/terminal';
-import { CopyBar, CopyCommand } from '@/components/copy-command';
+import { CopyBar } from '@/components/copy-command';
+import { InstallCommand } from '@/components/install-command';
 import { HeroTerminal } from '@/components/hero-terminal';
 
 export const metadata: Metadata = {
@@ -100,7 +101,7 @@ const features: {
           'Model:    bundled/all-MiniLM-L6-v2',
         ],
       },
-      { kind: 'out', bright: true, lines: ['Outbound connections: 0'] },
+      { kind: 'out', lines: ['Outbound connections: 0'] },
     ],
   },
   {
@@ -142,7 +143,7 @@ export default function HomePage() {
           Fast, private search and Q&A for your documents
         </h1>
         <div className="mt-12">
-          <CopyCommand command="brew install BenyD/tap/hay" />
+          <InstallCommand />
         </div>
         <p className="mt-4 text-sm text-fd-muted-foreground">
           run this in your terminal, or{' '}
@@ -203,7 +204,7 @@ export default function HomePage() {
           Get started with Haypile
         </h2>
         <div className="mt-8">
-          <CopyCommand command="brew install BenyD/tap/hay" />
+          <InstallCommand />
         </div>
         <p className="mt-4 text-sm text-fd-muted-foreground">
           then{' '}

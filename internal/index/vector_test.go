@@ -46,7 +46,7 @@ func TestVectorRoundTripAndSearch(t *testing.T) {
 		t.Fatalf("still %d missing after PutEmbedding", len(left))
 	}
 
-	results, err := st.VectorSearch([]float32{1, 0}, "", 2)
+	results, err := st.VectorSearch([]float32{1, 0}, nil, "", 2)
 	if err != nil {
 		t.Fatalf("VectorSearch: %v", err)
 	}
@@ -101,8 +101,28 @@ func TestVectorSearchRespectsTags(t *testing.T) {
 		}
 	}
 
-	r, err := st.VectorSearch([]float32{1, 0}, "work", 10)
+	r, err := st.VectorSearch([]float32{1, 0}, nil, "work", 10)
 	if err != nil || len(r) != 1 || r[0].Path != "/work/a.md" {
 		t.Fatalf("tag-filtered vector search wrong: %+v err=%v", r, err)
+	}
+}
+
+// TestExcerptAroundCentersOnMatch: a snippet must show why the chunk
+// matched, not whatever it happens to start with.
+func TestExcerptAroundCentersOnMatch(t *testing.T) {
+	head := strings.Repeat("filler words at the start of the chunk. ", 20)
+	text := head + "The Veryon platform serves aviation operators worldwide." + strings.Repeat(" trailing text", 30)
+
+	got := excerptAround(text, []string{"veryon"}, 160)
+	if !strings.Contains(got, "Veryon") {
+		t.Fatalf("snippet does not contain the matched term: %q", got)
+	}
+	if !strings.HasPrefix(got, "…") {
+		t.Errorf("mid-text window should open with an ellipsis: %q", got)
+	}
+
+	// No literal match: fall back to the head, unchanged behavior.
+	if got := excerptAround(text, []string{"zzznope"}, 160); !strings.HasPrefix(got, "filler") {
+		t.Errorf("fallback should start at the chunk head: %q", got)
 	}
 }

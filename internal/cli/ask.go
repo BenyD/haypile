@@ -60,7 +60,7 @@ common ports. Haypile itself never talks to the network.`,
 				// search found and how to enable answers.
 				fmt.Fprintf(out, "%v\n\nTop passages for your question meanwhile:\n\n", err)
 				for i, r := range results {
-					fmt.Fprintf(out, "%2d. %s\n    %s\n", i+1, citation(r), r.Snippet)
+					fmt.Fprintf(out, "%2d. %s\n    %s\n", i+1, citation(r), oneLine(r.Snippet))
 				}
 				return nil
 			}

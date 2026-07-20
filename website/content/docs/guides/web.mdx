@@ -1,0 +1,36 @@
+---
+title: Use the web UI
+description: Search, ask, and manage sources from your browser, served locally by the daemon.
+---
+
+Everything the CLI does, in a browser tab:
+
+```sh
+hay web
+```
+
+This starts the daemon if it is not already running and opens `http://localhost:11500`. The page is served by the same process that powers `hay search` and `hay ask`, from assets embedded in the binary. There is no separate server, no build step, and nothing leaves your machine.
+
+## Search and read
+
+Type in the search box and results appear as you type, each cited with its file and page. Click a citation to read the passage in place, with the surrounding text for context, without opening the original document.
+
+Press `/` anywhere to jump back to the search box.
+
+## Ask
+
+Ask a question and the answer streams in live, with the retrieved sources listed above it. This uses the same local LLM as `hay ask`; if you have not set one up yet, run:
+
+```sh
+hay llm setup
+```
+
+## Manage sources
+
+The Sources panel does what `hay add`, `hay list`, and `hay remove` do: see what is indexed, add a folder or file, or remove one. When adding, the path field suggests completions as you type, and Browse opens an in-page folder picker. On macOS and Windows a native file dialog is available from inside the picker.
+
+Indexing runs in the background; you can close the panel and keep searching while it works.
+
+## Localhost only
+
+The daemon binds to `127.0.0.1` and refuses requests from other hosts and origins, so the web UI is reachable only from your own machine. Like the rest of the free tier it is single-user by design; team access is a paid-tier concern, not a flag you can flip.

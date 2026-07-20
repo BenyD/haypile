@@ -1,18 +1,16 @@
 import { ImageResponse } from 'next/og';
-import { generate as DefaultImage } from 'fumadocs-ui/og';
-import { appName } from '@/lib/shared';
+import { OGCard, ogFonts } from '@/components/og-card';
 
 export const revalidate = false;
 
-export function GET() {
+export async function GET() {
   return new ImageResponse(
     (
-      <DefaultImage
+      <OGCard
         title="Private search and Q&A for your documents"
         description="One binary. Fully local. Citations always."
-        site={appName}
       />
     ),
-    { width: 1200, height: 630 },
+    { width: 1200, height: 630, fonts: await ogFonts() },
   );
 }

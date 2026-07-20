@@ -29,6 +29,7 @@ func newRootCmd() *cobra.Command {
 		newRemoveCmd(),
 		newStatusCmd(),
 		newServeCmd(),
+		newWebCmd(),
 		newMCPStdioCmd(),
 		newLLMCmd(),
 	)

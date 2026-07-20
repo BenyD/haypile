@@ -9,27 +9,35 @@ deeper "why". (It replaces the pre-launch PRD, whose scope has shipped.)
 ### Now (v0.x)
 
 - CLI, REST API, and MCP server, all in one binary.
-- Formats: Markdown, plain text, PDF (text layer), docx, pptx, HTML.
+- Formats: Markdown, plain text, PDF, docx, pptx, HTML. PDF extraction is
+  layout-aware: paragraphs, headings, and bullets are rebuilt from the
+  page geometry, and icon-font glyphs are dropped instead of indexed as
+  junk characters.
+- OCR for scanned PDFs. Image-only pages are detected, rendered, and
+  transcribed by the user's local LLM when a vision-capable one is
+  running (the same delegation as `hay ask`). No LLM, no OCR: the page
+  indexes empty and everything else works, keeping the bundled /
+  offline / one-binary contract intact.
 - Bundled embedder with hybrid search (FTS5 keyword + vectors, merged with
   Reciprocal Rank Fusion), `hay ask` against any local OpenAI-compatible
   endpoint, and per-folder setup via `hay init`.
 - Install: Homebrew, the shell one-liner (`curl haypile.sh | sh`), and the
   PowerShell one-liner for Windows (`irm haypile.sh/install.ps1 | iex`).
+- `hay web`: the bundled local web UI (search, streamed answers, click a
+  citation to read the passage in place). Free, AGPL, single-user, served
+  by the daemon on localhost, embedded in the binary with no build step.
+  Landed ahead of its original v1.5 slot.
 
 ### Next (v1.x)
 
-- OCR for scanned PDFs. Image-only pages skip today; the goal is to detect
-  them, OCR the text, and cite them like any other page, without breaking
-  the bundled / offline / one-binary contract.
+- Bundled OCR for scanned PDFs, so pages transcribe without any LLM
+  running. Today OCR delegates to the user's local vision model; the
+  goal is a fully self-contained fallback that keeps the one-binary
+  contract.
 - Continued Windows polish beyond the installer.
 
 ### Later
 
-- **v1.5, `hay web`:** a minimal bundled local web UI served by the daemon
-  on localhost. Search box, answer with clickable citations, source
-  preview. Free, AGPL, single-user. The entry point for non-technical
-  users, developed fully in the open. Community UIs on the API are
-  encouraged in the meantime.
 - **v2:** optional larger embedding models, and an ANN index for very large
   corpora (brute-force vector scan is fine into the hundreds of thousands).
 - **Pro (paid):** a team layer for offices: auth, roles, audit logs, shared

@@ -51,12 +51,36 @@ func Hybrid(ctx context.Context, st *index.Store, emb embed.Embedder, q, tag str
 		// failure: degrade to keyword results.
 		return keyword, nil
 	}
-	vector, err := st.VectorSearch(qvecs[0], tag, limit)
+	vector, err := st.VectorSearch(qvecs[0], strings.Fields(q), tag, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	return fuse(limit, keyword, vector), nil
+	return fuse(limit, keyword, relevant(vector)), nil
+}
+
+// Nearest-neighbor lists always fill up to limit no matter how weakly
+// related the tail is; without a floor a one-word query drags in every
+// vaguely similar chunk in the index. Floors are conservative: cosine
+// below minCosine is noise for this model family, and anything under
+// half the best hit's similarity is padding, not signal.
+const (
+	minCosine     = 0.25
+	relativeFloor = 0.5
+)
+
+func relevant(vector []index.Result) []index.Result {
+	if len(vector) == 0 {
+		return vector
+	}
+	top := vector[0].Score
+	out := vector[:0]
+	for _, r := range vector {
+		if r.Score >= minCosine && r.Score >= top*relativeFloor {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // fuse merges ranked lists with Reciprocal Rank Fusion. RRF needs no score

@@ -53,6 +53,30 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: go build ./cmd/hay
 
+  # The web UI ships inside the binary from the committed
+  # internal/webui/dist. Rebuild it here and fail on drift, so the
+  # embedded app can never be stale against its source.
+  webui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webui
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+      - name: install
+        run: npm ci
+      - name: typecheck
+        run: npm run check
+      - name: build
+        run: npm run build
+      - name: dist matches source
+        run: git diff --exit-code ../internal/webui/dist
+
   # The marketing/docs site deploys straight from main, so a broken
   # typecheck or build must fail here rather than in the deploy. `next
   # build` runs its own TypeScript pass, which catches things `tsc`

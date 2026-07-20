@@ -101,7 +101,7 @@ const features: {
           'Model:    bundled/all-MiniLM-L6-v2',
         ],
       },
-      { kind: 'out', bright: true, lines: ['Outbound connections: 0'] },
+      { kind: 'out', lines: ['Outbound connections: 0'] },
     ],
   },
   {

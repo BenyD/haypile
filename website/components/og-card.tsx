@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { Mark } from '@/app/icon';
 
 /* The social share card, in the brand's own language: neutral dark
-   surface, the haystack mark, a miniature of the landing page's hero
-   terminal, and the one color the brand allows itself, the green of
-   the privacy receipt. Rendered by next/og at build time. */
+   surface, the haystack mark, and a miniature of the landing page's
+   hero terminal. Monochrome on purpose; the product's claims are
+   stated, never dressed up. Rendered by next/og at build time. */
 
 /* Fonts for ImageResponse, all vendored under lib/og (OFL licensed):
    Inter matches the site's own typeface and JetBrains Mono makes the
@@ -128,7 +128,7 @@ export function OGCard({ title, description }: { title: string; description?: st
           <TermLine color="#71717a">{'  [1] vendor-deal.docx, p.4'}</TermLine>
           <TermLine> </TermLine>
           <Prompt cmd="hay status" />
-          <TermLine color="#4ade80">Outbound connections: 0</TermLine>
+          <TermLine>Outbound connections: 0</TermLine>
         </div>
       </div>
     </div>

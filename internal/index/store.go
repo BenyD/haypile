@@ -98,8 +98,12 @@ func Open(path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("create data dir: %w", err)
 	}
+	// busy_timeout must come first: pragmas apply in order, and
+	// journal_mode takes a lock. With the timeout set after it, opening
+	// while another process winds down (a just-retired daemon) failed
+	// with "database is locked" instead of waiting a moment.
 	db, err := driver.Open(
-		"file:"+path+"?_pragma=journal_mode(wal)&_pragma=busy_timeout(5000)&_pragma=synchronous(normal)",
+		"file:"+path+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(wal)&_pragma=synchronous(normal)",
 		fts5.Register)
 	if err != nil {
 		return nil, err

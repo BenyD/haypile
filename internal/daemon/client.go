@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/BenyD/haypile/internal/index"
@@ -21,10 +23,17 @@ type Client struct {
 	http *http.Client
 }
 
+// CurrentVersion is the version of this binary, set by the CLI at
+// startup. Discover uses it to spot a daemon left running by an older
+// install: after an upgrade the process on disk changes but the one in
+// memory does not, and it would keep serving old code forever.
+var CurrentVersion string
+
 // Discover returns a client for the daemon serving this HAYPILE_DIR, or
 // nil when none is running. A daemon serving a different database is
 // treated as absent — routing a query to the wrong index would be worse
-// than a slow direct query.
+// than a slow direct query. A daemon running a different version is
+// retired on sight so AutoStart can bring up the current binary.
 func Discover() *Client {
 	dataDir := filepath.Dir(index.DefaultPath())
 	rt, err := readRuntimeFile(dataDir)
@@ -39,7 +48,39 @@ func Discover() *Client {
 	if err != nil || !h.OK || h.DB != index.DefaultPath() {
 		return nil
 	}
+	if staleVersion(h.Version, CurrentVersion) && rt.PID != os.Getpid() {
+		retire(rt.PID, c)
+		return nil
+	}
 	return c
+}
+
+// staleVersion reports whether a daemon at daemonV should make way for
+// a CLI at cliV. Unknown versions never trigger a restart.
+func staleVersion(daemonV, cliV string) bool {
+	return daemonV != "" && cliV != "" && daemonV != cliV
+}
+
+// retire asks the old daemon to exit and waits briefly for the port to
+// clear so the caller can start the new binary without a bind race.
+func retire(pid int, c *Client) {
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return
+	}
+	if runtime.GOOS == "windows" {
+		p.Kill() // Windows cannot deliver SIGTERM
+	} else {
+		p.Signal(syscall.SIGTERM)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := c.health(); err != nil {
+			return // it is gone
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	p.Kill() // graceful ran out of patience
 }
 
 // AutoStart returns a client, launching the daemon first if none is

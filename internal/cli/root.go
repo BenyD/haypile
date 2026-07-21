@@ -4,10 +4,18 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/BenyD/haypile/internal/daemon"
 )
 
 // version is set at build time via -ldflags "-X ...cli.version=v1.2.3".
 var version = "dev"
+
+func init() {
+	// Lets daemon discovery retire a daemon left over from before an
+	// upgrade instead of quietly using its old code.
+	daemon.CurrentVersion = version
+}
 
 func newRootCmd() *cobra.Command {
 	root := &cobra.Command{

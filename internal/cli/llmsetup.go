@@ -64,7 +64,11 @@ func runLLMSetup(cmd *cobra.Command, p *prompter, model string, yes bool) error 
 	// Step 0: maybe everything already works.
 	if c, err := llm.Detect(ctx, "", ""); err == nil {
 		fmt.Fprintf(out, "Found a running LLM server: %s (model: %s)\n", c.BaseURL, c.Model)
-		return verifyLLM(ctx, out, c)
+		if err := verifyLLM(ctx, out, c); err != nil {
+			return err
+		}
+		offerVisionModel(ctx, cmd, out, confirm, c)
+		return nil
 	}
 	fmt.Fprintln(out, "No running LLM server found. Setting one up with Ollama.")
 
@@ -129,7 +133,41 @@ func runLLMSetup(cmd *cobra.Command, p *prompter, model string, yes bool) error 
 	if err != nil {
 		return fmt.Errorf("setup finished but no endpoint answers: %w", err)
 	}
-	return verifyLLM(ctx, out, c)
+	if err := verifyLLM(ctx, out, c); err != nil {
+		return err
+	}
+
+	// Step 5: scanned PDFs need eyes. Optional, because it is another
+	// sizable download; skipping costs nothing except OCR.
+	offerVisionModel(ctx, cmd, out, confirm, c)
+	return nil
+}
+
+// offerVisionModel suggests a vision model when the server has none, so
+// scanned PDFs are searchable from day one instead of indexing empty
+// until the user discovers why. Ollama-only: it is the server this
+// setup manages; users of other servers pick their own models.
+func offerVisionModel(ctx context.Context, cmd *cobra.Command, out io.Writer, confirm func(string) bool, c *llm.Client) {
+	if _, err := exec.LookPath("ollama"); err != nil {
+		return
+	}
+	ids, err := c.ListModels(ctx)
+	if err != nil || llm.VisionModelID(ids) != "" {
+		return // unreachable list, or a vision model is already there
+	}
+	fmt.Fprintln(out, "\nOne more thing: scanned PDFs can only be searched if a vision model reads them.")
+	if !confirm("Download one for that? (llava, about 4.5GB, one time)") {
+		fmt.Fprintln(out, "Skipped. Scanned pages will index empty; run `ollama pull llava` anytime to enable OCR.")
+		return
+	}
+	fmt.Fprintln(out, "Running: ollama pull llava")
+	pull := exec.CommandContext(ctx, "ollama", "pull", "llava")
+	pull.Stdout, pull.Stderr = out, cmd.ErrOrStderr()
+	if err := pull.Run(); err != nil {
+		fmt.Fprintf(out, "ollama pull llava failed: %v\nScanned pages will index empty until a vision model is available.\n", err)
+		return
+	}
+	fmt.Fprintln(out, "Vision model ready. Scanned pages will be transcribed during indexing.")
 }
 
 func verifyLLM(ctx context.Context, out io.Writer, c *llm.Client) error {

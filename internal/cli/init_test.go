@@ -31,7 +31,7 @@ func TestInitUnattended(t *testing.T) {
 	if err != nil {
 		t.Fatalf("init: %v\n%s", err, out)
 	}
-	for _, want := range []string{".haypile.yml", ".mcp.json", "Indexed 1 files"} {
+	for _, want := range []string{".haypile.yml", ".mcp.json", "Indexed 1 file"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("init output missing %q:\n%s", want, out)
 		}

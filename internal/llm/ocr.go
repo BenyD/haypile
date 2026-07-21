@@ -110,9 +110,9 @@ var visionModelHints = []string{
 	"vision", "llava", "bakllava", "minicpm-v", "moondream", "pixtral",
 }
 
-// visionModelID returns the best vision-capable model id in ids by name
+// VisionModelID returns the best vision-capable model id in ids by name
 // heuristic, or "" when none look the part.
-func visionModelID(ids []string) string {
+func VisionModelID(ids []string) string {
 	for _, hint := range visionModelHints {
 		for _, id := range ids {
 			if strings.Contains(strings.ToLower(id), hint) {
@@ -157,8 +157,8 @@ func OCRHook() func(pngImage []byte) (string, error) {
 			// model, which usually cannot see images. When the server
 			// lists a vision-looking model, prefer it.
 			if explicit == "" {
-				if ids, err := c.listModels(ctx); err == nil {
-					if v := visionModelID(ids); v != "" {
+				if ids, err := c.ListModels(ctx); err == nil {
+					if v := VisionModelID(ids); v != "" {
 						c.Model = v
 					}
 				}

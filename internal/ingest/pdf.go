@@ -96,11 +96,20 @@ func extractPDF(path string) ([]Section, error) {
 		if err != nil {
 			return nil, fmt.Errorf("reading page %d: %w", i+1, err)
 		}
-		if strings.TrimSpace(text) == "" && ocrPage != nil && pageHasImage(inst, page) {
-			// No text but pixels: a scanned page. Best effort — a page
-			// the transcriber can't handle indexes empty, as before.
-			if t, err := transcribePage(inst, page); err == nil {
-				text = t
+		if strings.TrimSpace(text) == "" && pageHasImage(inst, page) {
+			// No text but pixels: a scanned page. Best effort, and the
+			// misses are marked so the caller can say "these pages
+			// indexed empty" instead of staying silent about it.
+			transcribed := false
+			if ocrPage != nil {
+				if t, err := transcribePage(inst, page); err == nil && strings.TrimSpace(t) != "" {
+					text = t
+					transcribed = true
+				}
+			}
+			if !transcribed {
+				sections = append(sections, Section{Page: i + 1, ScanSkipped: true})
+				continue
 			}
 		}
 		sections = append(sections, Section{Text: text, Page: i + 1})

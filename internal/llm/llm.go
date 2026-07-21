@@ -101,8 +101,8 @@ func newClient(baseURL, model string) *Client {
 	}
 }
 
-// listModels asks /models and returns the ids in server order.
-func (c *Client) listModels(ctx context.Context) ([]string, error) {
+// ListModels asks /models and returns the ids in server order.
+func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/models", nil)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (c *Client) listModels(ctx context.Context) ([]string, error) {
 // Embedding-only models are skipped by name heuristic — asking an
 // embedder to chat produces a confusing server error.
 func (c *Client) pickModel(ctx context.Context) error {
-	ids, err := c.listModels(ctx)
+	ids, err := c.ListModels(ctx)
 	if err != nil {
 		return err
 	}

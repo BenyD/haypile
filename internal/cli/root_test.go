@@ -143,7 +143,7 @@ func TestAddSearchListRemoveEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "Indexed 1 files (1 chunks)") {
+	if !strings.Contains(out, "Indexed 1 file (1 chunk)") {
 		t.Errorf("add output unexpected:\n%s", out)
 	}
 
@@ -240,7 +240,7 @@ func TestAddSingleFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "Indexed 1 files") {
+	if !strings.Contains(out, "Indexed 1 file") {
 		t.Errorf("add output unexpected:\n%s", out)
 	}
 

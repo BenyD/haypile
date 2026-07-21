@@ -85,9 +85,13 @@ export function App() {
       setIndexNote('');
       try {
         const stats: IndexStats = await api.addSource(path, tag);
-        setIndexNote(
-          `Indexed ${stats.Indexed} files (${stats.Chunks} chunks), ${stats.Skipped} unchanged.`,
-        );
+        const files = stats.Indexed === 1 ? 'file' : 'files';
+        let note = `Indexed ${stats.Indexed} ${files} (${stats.Chunks} chunks), ${stats.Skipped} unchanged.`;
+        if (stats.ScanSkipped > 0) {
+          const pages = stats.ScanSkipped === 1 ? 'page looks' : 'pages look';
+          note += ` ${stats.ScanSkipped} ${pages} scanned and indexed empty: no vision model is running. Run "hay llm setup" to install one, then re-add.`;
+        }
+        setIndexNote(note);
         return true;
       } catch (e) {
         setIndexNote(e instanceof Error ? e.message : String(e));

@@ -17,6 +17,10 @@ import (
 type Section struct {
 	Text string
 	Page int // 1-based page number; 0 when the format has no pages
+	// ScanSkipped marks a page that looked scanned (an image, no text)
+	// but had no vision model to transcribe it, so it indexed empty.
+	// Counted into Stats so the CLI and web UI can say so out loud.
+	ScanSkipped bool
 }
 
 var extractors = map[string]func(path string) ([]Section, error){

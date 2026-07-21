@@ -30,6 +30,11 @@ type Stats struct {
 	Failed   int // files whose extraction failed (indexing continues)
 	Chunks   int // chunks written this pass
 	Embedded int // vectors computed this pass (cache hits excluded)
+	// ScanSkipped counts pages that looked scanned (an image, no text)
+	// but had no vision model to transcribe them; they indexed empty.
+	// Surfaced by the CLI and web UI so the silence is never mistaken
+	// for a broken index.
+	ScanSkipped int
 }
 
 // IndexFolder walks folder, indexes every supported file into st, and prunes
@@ -162,6 +167,11 @@ func indexFile(st *index.Store, sourceID int64, path string, stats *Stats, progr
 	if err != nil {
 		stats.Failed++
 		return nil
+	}
+	for _, s := range sections {
+		if s.ScanSkipped {
+			stats.ScanSkipped++
+		}
 	}
 	chunks := SplitSections(sections)
 	dbChunks := make([]index.Chunk, len(chunks))

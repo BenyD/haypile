@@ -17,8 +17,8 @@ func TestVisionModelID(t *testing.T) {
 		{"case insensitive", []string{"MiniCPM-V-2.6"}, "MiniCPM-V-2.6"},
 	}
 	for _, c := range cases {
-		if got := visionModelID(c.ids); got != c.want {
-			t.Errorf("%s: visionModelID(%v) = %q, want %q", c.name, c.ids, got, c.want)
+		if got := VisionModelID(c.ids); got != c.want {
+			t.Errorf("%s: VisionModelID(%v) = %q, want %q", c.name, c.ids, got, c.want)
 		}
 	}
 }

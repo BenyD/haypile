@@ -86,12 +86,27 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 }
 
 func printIndexStats(out io.Writer, stats ingest.Stats, model string) {
-	fmt.Fprintf(out, "Indexed %d files (%d chunks), %d unchanged.\n",
-		stats.Indexed, stats.Chunks, stats.Skipped)
+	fmt.Fprintf(out, "Indexed %d %s (%d %s), %d unchanged.\n",
+		stats.Indexed, plural(stats.Indexed, "file", "files"),
+		stats.Chunks, plural(stats.Chunks, "chunk", "chunks"), stats.Skipped)
 	if stats.Failed > 0 {
-		fmt.Fprintf(out, "Warning: %d files could not be read and were skipped.\n", stats.Failed)
+		fmt.Fprintf(out, "Warning: %d %s could not be read and %s skipped.\n",
+			stats.Failed, plural(stats.Failed, "file", "files"), plural(stats.Failed, "was", "were"))
 	}
 	if model != "" {
 		fmt.Fprintf(out, "Embedded %d chunks for semantic search (%s).\n", stats.Embedded, model)
 	}
+	if stats.ScanSkipped > 0 {
+		fmt.Fprintf(out, "%d %s scanned (image only) and indexed empty: no vision model is running to read %s.\n",
+			stats.ScanSkipped, plural(stats.ScanSkipped, "page looks", "pages look"), plural(stats.ScanSkipped, "it", "them"))
+		fmt.Fprintln(out, "To make scans searchable: hay llm setup installs one (llava), then re-add this folder.")
+	}
+}
+
+// plural picks the wording that matches the count.
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
 }

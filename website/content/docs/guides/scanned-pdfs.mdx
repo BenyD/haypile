@@ -13,7 +13,12 @@ A local OpenAI-compatible server with a vision-capable model. With Ollama:
 ollama pull llava
 ```
 
-Any vision model works; larger ones read small print and tables better. Without one, nothing breaks: scanned pages simply index empty and every other page works normally.
+`hay llm setup` offers this download at the end of setup, so most installs already said yes or no to it once. Any vision model works; larger ones read small print and tables better. Without one, nothing breaks: scanned pages index empty, and `hay add` says so:
+
+```
+2 pages look scanned (image only) and indexed empty: no vision model is running to read them.
+To make scans searchable: hay llm setup installs one (llava), then re-add this folder.
+```
 
 ## Which model gets used
 

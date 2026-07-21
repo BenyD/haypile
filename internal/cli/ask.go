@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -58,7 +59,13 @@ common ports. Haypile itself never talks to the network.`,
 			if err != nil {
 				// No LLM is a degraded mode, not a failure: show what
 				// search found and how to enable answers.
-				fmt.Fprintf(out, "%v\n\nTop passages for your question meanwhile:\n\n", err)
+				if errors.Is(err, llm.ErrNoEndpoint) {
+					warnf(out, "no local LLM endpoint found (tried Ollama :11434, LM Studio :1234, llama.cpp :8080, Jan :1337).")
+					hintf(out, "hay llm setup gets one going; or point hay at yours: hay ask --endpoint http://localhost:PORT/v1")
+				} else {
+					warnf(out, "%v", err)
+				}
+				fmt.Fprint(out, "\nTop passages for your question meanwhile:\n\n")
 				for i, r := range results {
 					fmt.Fprintf(out, "%2d. %s\n    %s\n", i+1, citation(r), oneLine(r.Snippet))
 				}

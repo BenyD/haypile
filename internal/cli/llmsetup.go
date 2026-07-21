@@ -164,7 +164,8 @@ func offerVisionModel(ctx context.Context, cmd *cobra.Command, out io.Writer, co
 	pull := exec.CommandContext(ctx, "ollama", "pull", "llava")
 	pull.Stdout, pull.Stderr = out, cmd.ErrOrStderr()
 	if err := pull.Run(); err != nil {
-		fmt.Fprintf(out, "ollama pull llava failed: %v\nScanned pages will index empty until a vision model is available.\n", err)
+		warnf(out, "ollama pull llava failed: %v", err)
+		hintf(out, "scanned pages will index empty until a vision model is available")
 		return
 	}
 	fmt.Fprintln(out, "Vision model ready. Scanned pages will be transcribed during indexing.")

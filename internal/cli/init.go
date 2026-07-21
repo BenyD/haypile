@@ -107,7 +107,7 @@ func runInit(cmd *cobra.Command, folder, tag string, excludes []string, mcp, mcp
 	}
 	if writeMCP {
 		if err := writeMCPConfig(out, abs); err != nil {
-			fmt.Fprintf(out, "Warning: could not write .mcp.json: %v\n", err)
+			warnf(out, "could not write .mcp.json: %v", err)
 		}
 	}
 

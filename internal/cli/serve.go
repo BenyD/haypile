@@ -25,8 +25,8 @@ func newServeCmd() *cobra.Command {
 				addr = fmt.Sprintf("%s:%d", host, port)
 			}
 			if host != "127.0.0.1" && host != "localhost" {
-				fmt.Fprintf(cmd.ErrOrStderr(),
-					"WARNING: binding %s exposes the API beyond this machine; v1 has no auth.\n", host)
+				warnf(cmd.ErrOrStderr(),
+					"binding %s exposes the API beyond this machine; v1 has no auth.", host)
 			}
 			// A daemon must die cleanly: finish in-flight requests and
 			// remove its runtime file on SIGINT/SIGTERM.

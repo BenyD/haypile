@@ -19,6 +19,12 @@ import (
 // cited answers hold together.
 const recommendedModel = "llama3.2:3b"
 
+// recommendedVisionModel transcribes scanned pages. Chosen for faithful
+// OCR of dense text: general vision chat models (llava) tend to describe
+// or even invent content instead of writing down the words on the page,
+// and invented text in a search index is worse than an empty page.
+const recommendedVisionModel = "qwen3-vl"
+
 func newLLMCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "llm",
@@ -156,15 +162,15 @@ func offerVisionModel(ctx context.Context, cmd *cobra.Command, out io.Writer, co
 		return // unreachable list, or a vision model is already there
 	}
 	fmt.Fprintln(out, "\nOne more thing: scanned PDFs can only be searched if a vision model reads them.")
-	if !confirm("Download one for that? (llava, about 4.5GB, one time)") {
-		fmt.Fprintln(out, "Skipped. Scanned pages will index empty; run `ollama pull llava` anytime to enable OCR.")
+	if !confirm(fmt.Sprintf("Download one for that? (%s, about 6GB, one time)", recommendedVisionModel)) {
+		fmt.Fprintf(out, "Skipped. Scanned pages will index empty; run `ollama pull %s` anytime to enable OCR.\n", recommendedVisionModel)
 		return
 	}
-	fmt.Fprintln(out, "Running: ollama pull llava")
-	pull := exec.CommandContext(ctx, "ollama", "pull", "llava")
+	fmt.Fprintf(out, "Running: ollama pull %s\n", recommendedVisionModel)
+	pull := exec.CommandContext(ctx, "ollama", "pull", recommendedVisionModel)
 	pull.Stdout, pull.Stderr = out, cmd.ErrOrStderr()
 	if err := pull.Run(); err != nil {
-		warnf(out, "ollama pull llava failed: %v", err)
+		warnf(out, "ollama pull %s failed: %v", recommendedVisionModel, err)
 		hintf(out, "scanned pages will index empty until a vision model is available")
 		return
 	}

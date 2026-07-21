@@ -22,7 +22,9 @@ import (
 
 const ocrPrompt = "Transcribe all text in this page image, top to bottom, in reading order. " +
 	"Separate paragraphs with blank lines. Output only the transcribed text — " +
-	"no commentary, no markdown fences. If the page has no text, output nothing."
+	"no commentary, no markdown fences. Do not describe, summarize, or interpret " +
+	"the page; write only the exact words that appear on it, and never add words " +
+	"that do not. If the page has no text, output nothing."
 
 // visionRequest is a chat request whose user content is the typed-parts
 // form OpenAI-compatible servers require for images.

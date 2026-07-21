@@ -131,9 +131,9 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 	return ids, nil
 }
 
-// pickModel keeps the first listed entry unless one is already chosen.
-// Embedding-only models are skipped by name heuristic — asking an
-// embedder to chat produces a confusing server error.
+// pickModel chooses a model for text answers unless one is already
+// chosen. Embedding-only models are skipped by name heuristic — asking
+// an embedder to chat produces a confusing server error.
 func (c *Client) pickModel(ctx context.Context) error {
 	ids, err := c.ListModels(ctx)
 	if err != nil {
@@ -142,14 +142,34 @@ func (c *Client) pickModel(ctx context.Context) error {
 	if c.Model != "" {
 		return nil // endpoint is alive and the model was chosen explicitly
 	}
-	for _, m := range ids {
-		if id := strings.ToLower(m); strings.Contains(id, "embed") || strings.Contains(id, "minilm") {
-			continue
-		}
+	if m := ChatModelID(ids); m != "" {
 		c.Model = m
 		return nil
 	}
 	return fmt.Errorf("endpoint has no chat model loaded (hay ask --model <name> to force one)")
+}
+
+// ChatModelID picks the model to answer text questions with: the first
+// entry that is neither an embedder nor a vision model. Vision models
+// answer text questions noticeably worse, and installing one for OCR
+// must not quietly become the default voice of hay ask. When only
+// vision models are loaded, the first one wins: worse beats nothing.
+func ChatModelID(ids []string) string {
+	isEmbedder := func(m string) bool {
+		id := strings.ToLower(m)
+		return strings.Contains(id, "embed") || strings.Contains(id, "minilm")
+	}
+	for _, m := range ids {
+		if !isEmbedder(m) && VisionModelID([]string{m}) == "" {
+			return m
+		}
+	}
+	for _, m := range ids {
+		if !isEmbedder(m) {
+			return m
+		}
+	}
+	return ""
 }
 
 type chatRequest struct {

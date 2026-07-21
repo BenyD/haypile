@@ -10,22 +10,26 @@ Some PDFs carry no text at all: scans, faxes, photographed contracts. Haypile de
 A local OpenAI-compatible server with a vision-capable model. With Ollama:
 
 ```sh
-ollama pull llava
+ollama pull qwen3-vl
 ```
 
-`hay llm setup` offers this download at the end of setup, so most installs already said yes or no to it once. Any vision model works; larger ones read small print and tables better. Without one, nothing breaks: scanned pages index empty, and `hay add` says so:
+`hay llm setup` offers this download at the end of setup, so most installs already said yes or no to it once. Without a vision model, nothing breaks: scanned pages index empty, and `hay add` says so:
 
 ```
 ! 2 scanned pages indexed empty: no vision model is running.
-  hay llm setup installs one (llava); re-add this folder after.
+  hay llm setup installs one; re-add this folder after.
 ```
+
+## Pick a model that transcribes, not narrates
+
+Not every vision model takes transcription seriously. General vision chat models (llava especially) tend to describe the page in their own words, and sometimes invent details that are not on it; that text then sits in your index and comes back in search results as if your document said it. Models with strong OCR training (qwen3-vl, minicpm-v, or a dedicated OCR model) write down the words on the page. After indexing a scan, search for a phrase you can see on it; a miss means the transcription is not faithful and a better model is worth the download.
 
 ## Which model gets used
 
 OCR prefers a vision-looking model from whatever your server lists: names containing `ocr` first (Unlimited-OCR, HunyuanOCR), then vision families like `-vl`, `vision`, `llava`, `minicpm-v`. If none match, it falls back to the first chat model. Override the choice explicitly:
 
 ```sh
-export HAYPILE_OCR_MODEL=llava
+export HAYPILE_OCR_MODEL=qwen3-vl
 hay add ~/scans
 ```
 
@@ -40,7 +44,7 @@ export HAYPILE_LLM_ENDPOINT=http://localhost:8000/v1
 hay add ~/scans
 ```
 
-The model name contains `ocr`, so it is picked for transcription automatically. It wants a GPU; on a laptop without one, a small llava through Ollama is the practical choice.
+The model name contains `ocr`, so it is picked for transcription automatically. It wants a GPU; on a laptop without one, qwen3-vl through Ollama is the practical choice.
 
 ## How pages are chosen
 

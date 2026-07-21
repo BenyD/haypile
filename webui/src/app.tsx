@@ -88,8 +88,8 @@ export function App() {
         const files = stats.Indexed === 1 ? 'file' : 'files';
         let note = `Indexed ${stats.Indexed} ${files} (${stats.Chunks} chunks), ${stats.Skipped} unchanged.`;
         if (stats.ScanSkipped > 0) {
-          const pages = stats.ScanSkipped === 1 ? 'page looks' : 'pages look';
-          note += ` ${stats.ScanSkipped} ${pages} scanned and indexed empty: no vision model is running. Run "hay llm setup" to install one, then re-add.`;
+          const pages = stats.ScanSkipped === 1 ? 'page' : 'pages';
+          note += ` ${stats.ScanSkipped} scanned ${pages} indexed empty: no vision model is running. hay llm setup installs one; re-add after.`;
         }
         setIndexNote(note);
         return true;

@@ -105,7 +105,7 @@ func printIndexStats(out io.Writer, stats ingest.Stats, model string) {
 	if stats.ScanSkipped > 0 {
 		warnf(out, "%d scanned %s indexed empty: no vision model is running.",
 			stats.ScanSkipped, plural(stats.ScanSkipped, "page", "pages"))
-		hintf(out, "hay llm setup installs one (llava); re-add this folder after.")
+		hintf(out, "hay llm setup installs one; re-add this folder after.")
 	}
 }
 

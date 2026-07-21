@@ -28,7 +28,11 @@ func newAddCmd() *cobra.Command {
 				return err
 			}
 			printIndexStats(out, stats, model)
-			fmt.Fprintln(out, `Try: hay search "something you remember"`)
+			// Suggesting a search right after nothing became searchable
+			// would point at the void.
+			if stats.Chunks > 0 || stats.Skipped > 0 {
+				fmt.Fprintln(out, `Try: hay search "something you remember"`)
+			}
 			return nil
 		},
 	}
@@ -90,16 +94,18 @@ func printIndexStats(out io.Writer, stats ingest.Stats, model string) {
 		stats.Indexed, plural(stats.Indexed, "file", "files"),
 		stats.Chunks, plural(stats.Chunks, "chunk", "chunks"), stats.Skipped)
 	if stats.Failed > 0 {
-		fmt.Fprintf(out, "Warning: %d %s could not be read and %s skipped.\n",
+		warnf(out, "%d %s could not be read and %s skipped.",
 			stats.Failed, plural(stats.Failed, "file", "files"), plural(stats.Failed, "was", "were"))
 	}
-	if model != "" {
-		fmt.Fprintf(out, "Embedded %d chunks for semantic search (%s).\n", stats.Embedded, model)
+	// "Embedded 0 chunks" is noise when nothing new was indexed.
+	if model != "" && stats.Chunks > 0 {
+		fmt.Fprintf(out, "Embedded %d %s for semantic search (%s).\n",
+			stats.Embedded, plural(stats.Embedded, "chunk", "chunks"), model)
 	}
 	if stats.ScanSkipped > 0 {
-		fmt.Fprintf(out, "%d %s scanned (image only) and indexed empty: no vision model is running to read %s.\n",
-			stats.ScanSkipped, plural(stats.ScanSkipped, "page looks", "pages look"), plural(stats.ScanSkipped, "it", "them"))
-		fmt.Fprintln(out, "To make scans searchable: hay llm setup installs one (llava), then re-add this folder.")
+		warnf(out, "%d scanned %s indexed empty: no vision model is running.",
+			stats.ScanSkipped, plural(stats.ScanSkipped, "page", "pages"))
+		hintf(out, "hay llm setup installs one (llava); re-add this folder after.")
 	}
 }
 

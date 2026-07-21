@@ -39,7 +39,7 @@ const features: {
 }[] = [
   {
     title: 'Everything on your disk, searchable',
-    body: 'Grep matches strings and gets nothing from a PDF. Haypile extracts and embeds every document once, then watches the folder: ask for agreement cancellation and the termination clause surfaces in milliseconds, page cited, nothing re-read.',
+    body: 'Grep matches strings and gets nothing from a PDF. Haypile extracts and embeds every document once, scanned pages included via your local vision model, then watches the folder: ask for agreement cancellation and the termination clause surfaces in milliseconds, page cited, nothing re-read.',
     href: '/docs/guides/search',
     linkText: 'Learn about search',
     script: [
@@ -87,7 +87,7 @@ const features: {
   },
   {
     title: 'Your documents stay yours',
-    body: 'Client files, medical records, anything under NDA: some documents must never leave your machine. The model ships inside the binary, the index is one SQLite file on your disk, and hay status proves the outbound count is zero.',
+    body: 'Client files, medical records, anything under NDA: some documents must never leave your machine. The model ships inside the binary, the index is one SQLite file on your disk, and even OCR of scanned pages runs against a model on your machine, never a cloud. hay status proves the outbound count is zero.',
     href: '/docs/explanation/privacy',
     linkText: 'How privacy is verified',
     script: [

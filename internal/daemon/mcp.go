@@ -150,7 +150,14 @@ func (s *Server) runMCPTool(ctx context.Context, name, q, tag string, limit int)
 			if r.Page > 0 {
 				cite = fmt.Sprintf("%s (page %d)", r.Path, r.Page)
 			}
-			fmt.Fprintf(&b, "[%d] %s\n%s\n\n", i+1, cite, r.Snippet)
+			// Agents get the full passage: they reason over what they
+			// receive, and a truncated snippet reads as the document
+			// not containing the answer.
+			passage := r.Text
+			if passage == "" {
+				passage = r.Snippet
+			}
+			fmt.Fprintf(&b, "[%d] %s\n%s\n\n", i+1, cite, passage)
 		}
 		return strings.TrimSpace(b.String()), nil
 	case "list_sources":

@@ -18,9 +18,13 @@ type Section struct {
 	Text string
 	Page int // 1-based page number; 0 when the format has no pages
 	// ScanSkipped marks a page that looked scanned (an image, no text)
-	// but had no vision model to transcribe it, so it indexed empty.
-	// Counted into Stats so the CLI and web UI can say so out loud.
+	// with no vision model around to transcribe it; ScanFailed marks one
+	// where a model existed but errored or read nothing. Both index
+	// empty and both are counted into Stats, because the two situations
+	// need different advice and silence would be mistaken for a broken
+	// index.
 	ScanSkipped bool
+	ScanFailed  bool
 }
 
 var extractors = map[string]func(path string) ([]Section, error){

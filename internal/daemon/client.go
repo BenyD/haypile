@@ -156,7 +156,7 @@ func (c *Client) Query(q, tag string, limit int) ([]index.Result, error) {
 	for i, r := range out.Results {
 		results[i] = index.Result{
 			Path: r.Path, Page: r.Page, Seq: r.Chunk,
-			Snippet: r.Snippet, Score: r.Score,
+			Snippet: r.Snippet, Text: r.Text, Score: r.Score,
 		}
 	}
 	return results, nil

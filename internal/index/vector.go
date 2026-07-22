@@ -138,6 +138,7 @@ func (s *Store) VectorSearch(query []float32, terms []string, tag string, limit 
 		}
 		r.Score = float64(dot(query, blobToVec(blob)))
 		r.Snippet = excerptAround(text, terms, 160)
+		r.Text = text
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {

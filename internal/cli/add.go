@@ -107,6 +107,11 @@ func printIndexStats(out io.Writer, stats ingest.Stats, model string) {
 			stats.ScanSkipped, plural(stats.ScanSkipped, "page", "pages"))
 		hintf(out, "hay llm setup installs one; re-add this folder after.")
 	}
+	if stats.ScanFailed > 0 {
+		warnf(out, "%d scanned %s indexed empty: the vision model errored or read nothing.",
+			stats.ScanFailed, plural(stats.ScanFailed, "page", "pages"))
+		hintf(out, "re-add this folder to retry; a slow first load usually works the second time")
+	}
 }
 
 // plural picks the wording that matches the count.

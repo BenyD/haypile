@@ -6,9 +6,16 @@ import (
 	"testing"
 )
 
+// ocrDown mimics the hook's "no vision endpoint at all" error shape.
+type ocrDown struct{}
+
+func (ocrDown) Error() string        { return "no endpoint" }
+func (ocrDown) OCRUnavailable() bool { return true }
+
 // A scanned page nobody can read must be marked, not silently empty:
-// the mark is what lets hay add explain itself.
-func TestScanSkippedMarkedWithoutOCR(t *testing.T) {
+// the marks are what let hay add explain itself, and the two marks
+// differ because "install a model" and "retry" are different advice.
+func TestScanSkippedWithoutOCRHook(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "scan.pdf")
 	writeImageOnlyPDF(t, path)
 
@@ -16,33 +23,43 @@ func TestScanSkippedMarkedWithoutOCR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
-	if len(secs) != 1 || !secs[0].ScanSkipped {
-		t.Errorf("page without OCR must carry ScanSkipped, got %+v", secs)
+	if len(secs) != 1 || !secs[0].ScanSkipped || secs[0].ScanFailed {
+		t.Errorf("page without any OCR hook must carry ScanSkipped, got %+v", secs)
 	}
 }
 
-// The same page with a failing transcriber (vision server down) counts
-// as skipped too; a working transcriber clears the mark.
-func TestScanSkippedFollowsOCROutcome(t *testing.T) {
+func TestScanMarksFollowOCROutcome(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "scan.pdf")
 	writeImageOnlyPDF(t, path)
-
-	SetOCR(func([]byte) (string, error) { return "", errors.New("no endpoint") })
 	t.Cleanup(func() { SetOCR(nil) })
+
+	// No endpoint behind the hook: same advice as no hook.
+	SetOCR(func([]byte) (string, error) { return "", ocrDown{} })
 	secs, err := Extract(path)
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
-	if len(secs) != 1 || !secs[0].ScanSkipped {
-		t.Errorf("failed OCR must mark ScanSkipped, got %+v", secs)
+	if len(secs) != 1 || !secs[0].ScanSkipped || secs[0].ScanFailed {
+		t.Errorf("unavailable OCR must mark ScanSkipped, got %+v", secs)
 	}
 
+	// A model that errors, or reads nothing, is a failure to retry.
+	SetOCR(func([]byte) (string, error) { return "", errors.New("boom") })
+	if secs, _ = Extract(path); len(secs) != 1 || !secs[0].ScanFailed || secs[0].ScanSkipped {
+		t.Errorf("erroring OCR must mark ScanFailed, got %+v", secs)
+	}
+	SetOCR(func([]byte) (string, error) { return "   ", nil })
+	if secs, _ = Extract(path); len(secs) != 1 || !secs[0].ScanFailed {
+		t.Errorf("blank transcription must mark ScanFailed, got %+v", secs)
+	}
+
+	// A working model clears both marks and carries text.
 	SetOCR(func([]byte) (string, error) { return "SECURITY DEPOSIT $2,000", nil })
 	secs, err = Extract(path)
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
-	if len(secs) != 1 || secs[0].ScanSkipped || secs[0].Text == "" {
-		t.Errorf("successful OCR must clear ScanSkipped and carry text, got %+v", secs)
+	if len(secs) != 1 || secs[0].ScanSkipped || secs[0].ScanFailed || secs[0].Text == "" {
+		t.Errorf("successful OCR must clear the marks and carry text, got %+v", secs)
 	}
 }

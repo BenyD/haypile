@@ -112,7 +112,7 @@ func runInit(cmd *cobra.Command, folder, tag string, excludes []string, mcp, mcp
 	}
 
 	// Index (and watch, via the daemon) with the configured tag.
-	stats, model, err := indexSource(cmd, abs, tag, false)
+	stats, model, err := indexSource(cmd, abs, tag, true)
 	if err != nil {
 		return err
 	}

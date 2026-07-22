@@ -11,12 +11,11 @@ import (
 // everywhere color is unwelcome (pipes, NO_COLOR, dumb terminals), so
 // tests and scripts see stable output.
 
-func colorEnabled(out io.Writer) bool {
+// isTerminal reports whether out is an interactive terminal, the only
+// place cursor tricks (a rewritten progress line) belong.
+func isTerminal(out io.Writer) bool {
 	f, ok := out.(*os.File)
 	if !ok {
-		return false
-	}
-	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
 		return false
 	}
 	fi, err := f.Stat()
@@ -24,6 +23,13 @@ func colorEnabled(out io.Writer) bool {
 		return false
 	}
 	return fi.Mode()&os.ModeCharDevice != 0
+}
+
+func colorEnabled(out io.Writer) bool {
+	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
+		return false
+	}
+	return isTerminal(out)
 }
 
 // warnf prints one attention line, prefixed "!".

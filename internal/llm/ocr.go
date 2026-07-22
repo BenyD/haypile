@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +26,35 @@ const ocrPrompt = "Transcribe all text in this page image, top to bottom, in rea
 	"no commentary, no markdown fences. Do not describe, summarize, or interpret " +
 	"the page; write only the exact words that appear on it, and never add words " +
 	"that do not. If the page has no text, output nothing."
+
+// groundingMarkup matches the layout markers that grounding-style OCR
+// models (Unlimited-OCR, DeepSeek-OCR, GOT-OCR) prepend to every block:
+// a lowercase label and a bounding box, as in "text [115, 240, 882, 326]".
+// The plain-text prompt above does not suppress them — the format is
+// baked into the models — so transcriptions are cleaned after the fact.
+var groundingMarkup = regexp.MustCompile(
+	`(?:title|sub_title|text|paragraph|table|figure|image|chart|formula|` +
+		`equation|caption|footnote|header|footer|list|page_number|reference)` +
+		` \[\d{1,4}(?:, ?\d{1,4}){3}\]`)
+
+var (
+	edgeSpace = regexp.MustCompile(`[ \t]+\n|\n[ \t]+`)
+	blankRuns = regexp.MustCompile(`\n{3,}`)
+)
+
+// stripGroundingMarkup removes layout markers from a transcription,
+// turning each into a paragraph break so block structure survives as
+// the blank lines the OCR prompt asks for. Text without markers passes
+// through untouched.
+func stripGroundingMarkup(s string) string {
+	if !groundingMarkup.MatchString(s) {
+		return s
+	}
+	s = groundingMarkup.ReplaceAllString(s, "\n\n")
+	s = edgeSpace.ReplaceAllString(s, "\n")
+	s = blankRuns.ReplaceAllString(s, "\n\n")
+	return strings.TrimSpace(s)
+}
 
 // visionRequest is a chat request whose user content is the typed-parts
 // form OpenAI-compatible servers require for images.
@@ -100,7 +130,7 @@ func (c *Client) OCRPage(ctx context.Context, pngImage []byte) (string, error) {
 	if len(parsed.Choices) == 0 {
 		return "", errors.New("LLM endpoint returned no choices")
 	}
-	return strings.TrimSpace(parsed.Choices[0].Message.Content), nil
+	return stripGroundingMarkup(strings.TrimSpace(parsed.Choices[0].Message.Content)), nil
 }
 
 // visionModelHints ranks name fragments that mark a model as vision

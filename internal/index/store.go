@@ -324,7 +324,11 @@ type Result struct {
 	Seq     int
 	Page    int // 1-based page number; 0 when the format has no pages
 	Snippet string
-	Score   float64
+	// Text is the chunk's full text. Snippet is for human eyes;
+	// answering models and agents read Text, because a 160-character
+	// excerpt silently starves them of the very passage they cite.
+	Text  string
+	Score float64
 }
 
 // Passage is one chunk with its full text, as served by the chunk-context
@@ -397,7 +401,7 @@ func (s *Store) SearchAny(query, tag string, limit int) ([]Result, error) {
 
 func (s *Store) searchFTS(fts, tag string, limit int) ([]Result, error) {
 	rows, err := s.db.Query(`
-		SELECT f.path, c.seq, c.page, snippet(chunks_fts, 0, '', '', ' … ', 16), -bm25(chunks_fts)
+		SELECT f.path, c.seq, c.page, snippet(chunks_fts, 0, '', '', ' … ', 16), c.text, -bm25(chunks_fts)
 		FROM chunks_fts
 		JOIN chunks c ON c.id = chunks_fts.rowid
 		JOIN files f ON f.id = c.file_id
@@ -413,7 +417,7 @@ func (s *Store) searchFTS(fts, tag string, limit int) ([]Result, error) {
 	var out []Result
 	for rows.Next() {
 		var r Result
-		if err := rows.Scan(&r.Path, &r.Seq, &r.Page, &r.Snippet, &r.Score); err != nil {
+		if err := rows.Scan(&r.Path, &r.Seq, &r.Page, &r.Snippet, &r.Text, &r.Score); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

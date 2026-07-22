@@ -171,13 +171,17 @@ func OCRHook() func(pngImage []byte) (string, error) {
 		dead := disabled || client == nil
 		mu.Unlock()
 		if dead {
-			return "", ErrNoEndpoint
+			return "", errOCRUnavailable{}
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-		defer cancel()
-		text, err := client.OCRPage(ctx, pngImage)
+		text, err := ocrOnce(client, pngImage)
 		var herr *httpError
+		if err != nil && !(errors.As(err, &herr) && herr.status >= 400 && herr.status < 500) {
+			// One retry. The common transient is a vision model cold
+			// loading on its first ever page; the second attempt rides
+			// on the load progress the first one started.
+			text, err = ocrOnce(client, pngImage)
+		}
 		if errors.As(err, &herr) && herr.status >= 400 && herr.status < 500 {
 			mu.Lock()
 			disabled = true
@@ -186,3 +190,19 @@ func OCRHook() func(pngImage []byte) (string, error) {
 		return text, err
 	}
 }
+
+func ocrOnce(c *Client, pngImage []byte) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+	return c.OCRPage(ctx, pngImage)
+}
+
+// errOCRUnavailable marks "no vision endpoint at all", which callers
+// report differently from a model that failed to read a page. It is a
+// type, not a sentinel, so ingest can detect it through the hook
+// boundary without importing this package.
+type errOCRUnavailable struct{}
+
+func (errOCRUnavailable) Error() string        { return ErrNoEndpoint.Error() }
+func (errOCRUnavailable) Unwrap() error        { return ErrNoEndpoint }
+func (errOCRUnavailable) OCRUnavailable() bool { return true }

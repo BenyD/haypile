@@ -260,11 +260,14 @@ type QueryRequest struct {
 
 // QueryResult is one hit; Page 0 means the format has no pages.
 type QueryResult struct {
-	Path    string  `json:"path"`
-	Page    int     `json:"page,omitempty"`
-	Chunk   int     `json:"chunk"`
-	Snippet string  `json:"snippet"`
-	Score   float64 `json:"score"`
+	Path    string `json:"path"`
+	Page    int    `json:"page,omitempty"`
+	Chunk   int    `json:"chunk"`
+	Snippet string `json:"snippet"`
+	// Text is the chunk's full text, for callers that answer or reason
+	// from the result (hay ask via daemon). Display surfaces use Snippet.
+	Text  string  `json:"text,omitempty"`
+	Score float64 `json:"score"`
 }
 
 func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -290,7 +293,7 @@ func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
 	for i, res := range results {
 		out[i] = QueryResult{
 			Path: res.Path, Page: res.Page, Chunk: res.Seq,
-			Snippet: res.Snippet, Score: res.Score,
+			Snippet: res.Snippet, Text: res.Text, Score: res.Score,
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"results": out})

@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image/png"
 	"os"
@@ -48,6 +49,13 @@ func pdfInstance() (pdfium.Pdfium, error) {
 // to whatever vision-capable LLM the user runs; ingest itself stays free
 // of LLM dependencies. Set it before indexing starts.
 var ocrPage func(pngImage []byte) (string, error)
+
+// ocrUnavailable detects "there is no vision endpoint" errors from the
+// hook by shape, keeping ingest free of an llm import.
+func ocrUnavailable(err error) bool {
+	var u interface{ OCRUnavailable() bool }
+	return errors.As(err, &u) && u.OCRUnavailable()
+}
 
 // SetOCR installs the transcriber used for pages with no extractable
 // text (scanned PDFs). A nil fn — or never calling this — means such
@@ -100,17 +108,20 @@ func extractPDF(path string) ([]Section, error) {
 			// No text but pixels: a scanned page. Best effort, and the
 			// misses are marked so the caller can say "these pages
 			// indexed empty" instead of staying silent about it.
-			transcribed := false
-			if ocrPage != nil {
-				if t, err := transcribePage(inst, page); err == nil && strings.TrimSpace(t) != "" {
-					text = t
-					transcribed = true
-				}
-			}
-			if !transcribed {
+			if ocrPage == nil {
 				sections = append(sections, Section{Page: i + 1, ScanSkipped: true})
 				continue
 			}
+			t, err := transcribePage(inst, page)
+			switch {
+			case err != nil && ocrUnavailable(err):
+				sections = append(sections, Section{Page: i + 1, ScanSkipped: true})
+				continue
+			case err != nil || strings.TrimSpace(t) == "":
+				sections = append(sections, Section{Page: i + 1, ScanFailed: true})
+				continue
+			}
+			text = t
 		}
 		sections = append(sections, Section{Text: text, Page: i + 1})
 	}

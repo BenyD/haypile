@@ -91,6 +91,10 @@ export function App() {
           const pages = stats.ScanSkipped === 1 ? 'page' : 'pages';
           note += ` ${stats.ScanSkipped} scanned ${pages} indexed empty: no vision model is running. hay llm setup installs one; re-add after.`;
         }
+        if (stats.ScanFailed > 0) {
+          const pages = stats.ScanFailed === 1 ? 'page' : 'pages';
+          note += ` ${stats.ScanFailed} scanned ${pages} indexed empty: the vision model errored or read nothing. Re-add to retry.`;
+        }
         setIndexNote(note);
         return true;
       } catch (e) {

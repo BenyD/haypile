@@ -36,6 +36,7 @@ export type IndexStats = {
   Failed: number;
   Chunks: number;
   ScanSkipped: number;
+  ScanFailed: number;
 };
 
 export class ApiError extends Error {

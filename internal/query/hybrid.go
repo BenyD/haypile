@@ -55,8 +55,30 @@ func Hybrid(ctx context.Context, st *index.Store, emb embed.Embedder, q, tag str
 	if err != nil {
 		return nil, err
 	}
+	// The nearest hits, saved before the floors: relevant() filters in
+	// place, and these are the fallback when everything gets filtered.
+	// The full limit, not a taste: this path only runs when the
+	// alternative is returning nothing at all, and at that point more
+	// candidates for the reader beats false precision.
+	nearest := append([]index.Result(nil), vector...)
 
-	return fuse(limit, keyword, relevant(vector)), nil
+	if fused := fuse(limit, keyword, relevant(vector)); len(fused) > 0 {
+		return fused, nil
+	}
+	// Nothing survived: question-phrased queries can score under the
+	// floors while the corpus plainly holds the answer, and "no results"
+	// reads as "nothing indexed". The single nearest chunk is the best
+	// weak signal (OR-matched keywords rank stopword overlap, which
+	// buries the real passage in noise); the caller or the answering
+	// model judges it.
+	if len(nearest) > 0 {
+		return nearest, nil
+	}
+	kw, err := st.SearchAny(q, tag, limit)
+	if err != nil {
+		return nil, err
+	}
+	return kw, nil
 }
 
 // Nearest-neighbor lists always fill up to limit no matter how weakly

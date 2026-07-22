@@ -62,8 +62,37 @@ func (c Config) Save(root string) error {
 // Excluded reports whether the path (relative to the config's folder,
 // slash-separated) matches any exclude pattern. A bare-name pattern like
 // "*.bak" matches at any depth, mirroring gitignore expectations.
+// alwaysSkip are directories that hold machine-managed files, never the
+// user's documents: dependency trees, build output, virtualenvs, caches.
+// Indexing a code project without this rule pulls in thousands of
+// dependency READMEs, which buries the user's own writing in search
+// results and takes minutes doing it. Excluded() enforces this before
+// the user's own patterns; a folder deliberately named node_modules and
+// full of real documents is not a case worth serving.
+var alwaysSkip = map[string]bool{
+	"node_modules": true,
+	"vendor":       true,
+	"venv":         true,
+	"__pycache__":  true,
+	"target":       true,
+	"dist":         true,
+	"build":        true,
+	"coverage":     true,
+	"Pods":         true,
+	"DerivedData":  true,
+}
+
+// SkipDir reports whether a directory name is machine-managed and never
+// worth walking into.
+func SkipDir(name string) bool { return alwaysSkip[name] }
+
 func (c Config) Excluded(rel string) bool {
 	rel = filepath.ToSlash(rel)
+	for _, seg := range strings.Split(rel, "/") {
+		if alwaysSkip[seg] {
+			return true
+		}
+	}
 	for _, p := range c.Exclude {
 		if ok, _ := doublestar.Match(p, rel); ok {
 			return true

@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -53,6 +54,9 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 	if c, err := daemon.AutoStart(); err != nil {
 		return stats, "", err
 	} else if c != nil {
+		if progress {
+			defer liveProgress(cmd, c, path)()
+		}
 		if stats, err = c.AddSource(path, tag); err != nil {
 			return stats, "", err
 		}
@@ -78,6 +82,7 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 	var report func(string)
 	if progress {
 		out := cmd.OutOrStdout()
+		fmt.Fprintf(out, "Indexing %s…\n", path)
 		report = func(p string) { fmt.Fprintf(out, "  %s\n", p) }
 	}
 	if stats, err = ingest.IndexFolder(st, path, tag, emb, report); err != nil {
@@ -87,6 +92,44 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 		model = emb.Model()
 	}
 	return stats, model, nil
+}
+
+// liveProgress keeps a folder-sized index pass from looking hung. The
+// daemon owns the work and answers one blocking request, so its own
+// growing counts are the only honest signal: poll them onto a single
+// rewritten line. Returns the stop function, which clears the line so
+// the summary lands on a clean row. Interactive terminals only; pipes
+// and CI logs get the one plain line and nothing else.
+func liveProgress(cmd *cobra.Command, c *daemon.Client, path string) func() {
+	out := cmd.OutOrStdout()
+	fmt.Fprintf(out, "Indexing %s…\n", path)
+	if !isTerminal(out) {
+		return func() {}
+	}
+
+	done, stopped := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(stopped)
+		tick := time.NewTicker(700 * time.Millisecond)
+		defer tick.Stop()
+		for {
+			select {
+			case <-done:
+				fmt.Fprint(out, "\r\033[K")
+				return
+			case <-tick.C:
+				s, err := c.Status()
+				if err != nil {
+					continue
+				}
+				fmt.Fprintf(out, "\r\033[K  %d files, %d chunks so far…", s.Files, s.Chunks)
+			}
+		}
+	}()
+	return func() {
+		close(done)
+		<-stopped
+	}
 }
 
 func printIndexStats(out io.Writer, stats ingest.Stats, model string) {

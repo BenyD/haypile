@@ -94,6 +94,65 @@ func TestOCRHookDisablesAfterClientError(t *testing.T) {
 	}
 }
 
+func TestStripGroundingMarkup(t *testing.T) {
+	cases := []struct {
+		name, in, want string
+	}{
+		{
+			"unlimited-ocr block per line",
+			"title [345, 92, 654, 112]GRANGE HOLLOW FARM\ntitle [306, 114, 688, 135]QUARTERLY STORAGE MEMO\ntext [115, 152, 332, 170]Date: 11 March 1987",
+			"GRANGE HOLLOW FARM\n\nQUARTERLY STORAGE MEMO\n\nDate: 11 March 1987",
+		},
+		{
+			"markers mid-line",
+			"Storage Supervisor text [114, 256, 880, 319]Following the inspection",
+			"Storage Supervisor\n\nFollowing the inspection",
+		},
+		{
+			"clean text untouched",
+			"Dear board,\n\nthe silo is fine.",
+			"Dear board,\n\nthe silo is fine.",
+		},
+		{
+			"unknown label untouched",
+			"banana [1, 2, 3, 4] split",
+			"banana [1, 2, 3, 4] split",
+		},
+		{
+			"wrong arity untouched",
+			"see table [12, 30] on page 4",
+			"see table [12, 30] on page 4",
+		},
+		{
+			"no space after comma",
+			"text [115,240,882,326]Following the inspection",
+			"Following the inspection",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := stripGroundingMarkup(tc.in); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestOCRPageStripsGroundingMarkup(t *testing.T) {
+	srv := fakeVisionLLM(t,
+		"text [115, 240, 882, 326]The moisture reading in silo B-7 stands at 14.2 percent.",
+		http.StatusOK, nil)
+
+	c := newClient(srv.URL+"/v1", "unlimited-ocr")
+	text, err := c.OCRPage(context.Background(), []byte("png-bytes"))
+	if err != nil {
+		t.Fatalf("OCRPage: %v", err)
+	}
+	if want := "The moisture reading in silo B-7 stands at 14.2 percent."; text != want {
+		t.Errorf("got %q, want %q", text, want)
+	}
+}
+
 func TestOCRHookOffSwitch(t *testing.T) {
 	t.Setenv("HAYPILE_OCR", "off")
 	if OCRHook() != nil {

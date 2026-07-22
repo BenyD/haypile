@@ -43,6 +43,7 @@ exclude:
 
 - `tag` scopes searches: `hay search "deposition" --tag acme-litigation`
 - `exclude` takes gitignore-style glob patterns, matched against paths relative to the folder. `drafts/**` skips a subtree; `*.bak` skips matching files at any depth. Hidden directories like `.git` are always skipped without any pattern.
+- Machine-managed directories are always skipped too: `node_modules`, `vendor`, `venv`, `__pycache__`, `target`, `dist`, `build`, `coverage`, `Pods`, `DerivedData`. Indexing a code project should surface your README and design notes, not a thousand dependency READMEs.
 
 ## Edit it anytime, by hand
 

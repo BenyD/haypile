@@ -21,8 +21,11 @@ function dedupeOverlap(passages: Passage[]): Passage[] {
   });
 }
 
-/* Side sheet showing a cited passage in context: the chunk the citation
-   points at, highlighted, with its neighbors around it. */
+/* Reader dialog showing a cited passage in context: the chunk the
+   citation points at, highlighted, with its neighbors dimmed around it.
+   A centered modal, not a side sheet: reading wants a book-width column
+   and the page's full attention, and it matches the Sources dialog so
+   the app has one modal language. */
 export function SourcePanel({ result, query, onClose }: { result: SearchResult; query: string; onClose: () => void }) {
   const [passages, setPassages] = useState<Passage[] | null>(null);
   const [error, setError] = useState('');
@@ -47,27 +50,34 @@ export function SourcePanel({ result, query, onClose }: { result: SearchResult; 
   }, [passages]);
 
   return (
-    <aside
-      class="fixed inset-y-0 right-0 z-40 flex w-[min(460px,92vw)] flex-col bg-white shadow-[-1px_0_0_rgb(0_0_0/0.06),-8px_0_24px_rgb(0_0_0/0.05),-24px_0_64px_rgb(0_0_0/0.07)] motion-safe:animate-panel-in dark:bg-neutral-950 dark:shadow-[-1px_0_0_rgb(255_255_255/0.08),-24px_0_64px_rgb(0_0_0/0.5)]"
+    <div
+      class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4 motion-safe:animate-fade-in"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
       aria-label="Source passage"
     >
-      <div class="flex items-start justify-between gap-3 border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
-        <div class="min-w-0">
-          <div class="font-mono text-[13px] font-semibold">{citeLabel(result)}</div>
-          <div class="mt-1 break-all text-xs text-neutral-400 dark:text-neutral-500">{result.path}</div>
+      <div
+        class="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-[0_0_0_1px_rgb(0_0_0/0.06),0_8px_24px_rgb(0_0_0/0.08),0_24px_64px_rgb(0_0_0/0.12)] motion-safe:animate-pop-in dark:bg-neutral-950 dark:shadow-[0_0_0_1px_rgb(255_255_255/0.09),0_24px_64px_rgb(0_0_0/0.6)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div class="flex items-start justify-between gap-3 border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
+          <div class="min-w-0">
+            <div class="font-mono text-[13px] font-semibold">{citeLabel(result)}</div>
+            <div class="mt-1 break-all text-xs text-neutral-400 dark:text-neutral-500">{result.path}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close (Esc)"
+            aria-label="Close"
+            class="relative -m-2 p-2 text-xl leading-none text-neutral-400 transition-[color,scale] duration-150 after:absolute after:-inset-2 hover:text-neutral-900 active:scale-[0.96] dark:hover:text-neutral-100"
+          >
+            &times;
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          title="Close (Esc)"
-          aria-label="Close"
-          class="relative -m-2 p-2 text-xl leading-none text-neutral-400 transition-[color,scale] duration-150 after:absolute after:-inset-2 hover:text-neutral-900 active:scale-[0.96] dark:hover:text-neutral-100"
-        >
-          &times;
-        </button>
-      </div>
 
-      <div ref={bodyRef} class="overflow-y-auto px-6 py-4">
+        <div ref={bodyRef} class="overflow-y-auto px-6 py-5">
         {error ? (
           <p class="text-sm text-neutral-500">Could not load the passage: {error}</p>
         ) : passages === null ? (
@@ -104,7 +114,8 @@ export function SourcePanel({ result, query, onClose }: { result: SearchResult; 
             );
           })
         )}
+        </div>
       </div>
-    </aside>
+    </div>
   );
 }

@@ -51,7 +51,7 @@ func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
 
 	// Everything that can fail with a plain status must fail before the
 	// SSE headers are written.
-	results, err := query.Hybrid(r.Context(), s.st, s.emb, req.Question, req.Tag, req.Limit)
+	results, err := query.HybridForAnswer(r.Context(), s.st, s.emb, req.Question, req.Tag, req.Limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return

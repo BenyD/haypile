@@ -46,7 +46,7 @@ common ports. Haypile itself never talks to the network.`,
 					return err
 				}
 				defer st.Close()
-				if results, err = query.Hybrid(cmd.Context(), st, emb, question, tag, limit); err != nil {
+				if results, err = query.HybridForAnswer(cmd.Context(), st, emb, question, tag, limit); err != nil {
 					return err
 				}
 			}

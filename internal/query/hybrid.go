@@ -18,10 +18,25 @@ import (
 // by hand — retrieval knobs change only when the eval set says so.
 const rrfK = 60
 
-// Hybrid searches with both retrievers and fuses the rankings. With no
-// embedder configured, or an index built by a different model, it returns
-// keyword results alone — search must always work.
+// Hybrid searches with both retrievers and fuses the rankings, returning
+// only results that clear the relevance floors — possibly none. This is
+// what a search box wants: an honest empty answer beats a list of
+// zero-relevance chunks with blank snippets. With no embedder, or an
+// index built by a different model, it returns keyword results alone.
 func Hybrid(ctx context.Context, st *index.Store, emb embed.Embedder, q, tag string, limit int) ([]index.Result, error) {
+	return hybrid(ctx, st, emb, q, tag, limit, false)
+}
+
+// HybridForAnswer is Hybrid for the RAG path: when nothing clears the
+// floors it falls back to the nearest chunks rather than returning
+// empty, so a question phrased unlike the corpus still gives the model
+// something to read. Only hay ask uses this; search and the MCP tool
+// use the strict Hybrid.
+func HybridForAnswer(ctx context.Context, st *index.Store, emb embed.Embedder, q, tag string, limit int) ([]index.Result, error) {
+	return hybrid(ctx, st, emb, q, tag, limit, true)
+}
+
+func hybrid(ctx context.Context, st *index.Store, emb embed.Embedder, q, tag string, limit int, fallback bool) ([]index.Result, error) {
 	keyword, err := st.Search(q, tag, limit)
 	if err != nil {
 		return nil, err
@@ -56,21 +71,22 @@ func Hybrid(ctx context.Context, st *index.Store, emb embed.Embedder, q, tag str
 		return nil, err
 	}
 	// The nearest hits, saved before the floors: relevant() filters in
-	// place, and these are the fallback when everything gets filtered.
-	// The full limit, not a taste: this path only runs when the
-	// alternative is returning nothing at all, and at that point more
-	// candidates for the reader beats false precision.
+	// place, and these are the answer-mode fallback when everything gets
+	// filtered. The full limit, not a taste: this path only runs when
+	// the alternative is returning nothing at all.
 	nearest := append([]index.Result(nil), vector...)
 
 	if fused := fuse(limit, keyword, relevant(vector)); len(fused) > 0 {
 		return fused, nil
 	}
-	// Nothing survived: question-phrased queries can score under the
-	// floors while the corpus plainly holds the answer, and "no results"
-	// reads as "nothing indexed". The single nearest chunk is the best
-	// weak signal (OR-matched keywords rank stopword overlap, which
-	// buries the real passage in noise); the caller or the answering
-	// model judges it.
+	if !fallback {
+		return nil, nil // a search box gets an honest "no matches"
+	}
+	// Answer mode, nothing survived: question-phrased queries can score
+	// under the floors while the corpus plainly holds the answer, and
+	// "no results" would read to the model as "nothing indexed". Hand it
+	// the nearest chunks (OR-matched keywords rank stopword overlap,
+	// which buries the real passage in noise) and let it judge.
 	if len(nearest) > 0 {
 		return nearest, nil
 	}

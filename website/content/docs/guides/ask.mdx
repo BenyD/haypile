@@ -40,6 +40,8 @@ Model quality matters here. A 3B parameter model or larger holds together well; 
 hay ask "..." --model qwen2.5:7b
 ```
 
+When several models are loaded, `hay ask` chooses a text chat model and skips vision models like `llava` and `qwen3-vl`, which answer text questions noticeably worse. So installing a vision model for [scanned-PDF OCR](/docs/guides/scanned-pdfs) never changes what answers your questions. Override the choice any time with `--model`.
+
 ## Point at a specific server
 
 Auto-detection probes the usual local ports (Ollama 11434, LM Studio 1234, llama.cpp 8080, Jan 1337). To use something else:

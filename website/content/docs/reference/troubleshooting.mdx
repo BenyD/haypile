@@ -35,6 +35,10 @@ Some files failed to open or parse: corrupt PDFs, permission problems, truncated
 
 Pages that are images need a local vision model to transcribe them; without one they index empty. See [Scanned PDFs (OCR)](/docs/guides/scanned-pdfs). After setting a model up, re-index the source: `hay remove <path> && hay add <path>`.
 
+## `hay init` indexed fewer files than expected
+
+Machine-managed directories are skipped on purpose: `node_modules`, `vendor`, `venv`, `__pycache__`, `target`, `dist`, `build`, `coverage`, `Pods`, `DerivedData`. Indexing a code project should surface your README and design notes, not thousands of dependency READMEs. Hidden directories like `.git` are skipped too. If a document you want lives in one of these folders, move it elsewhere or index that file directly with `hay add <file>`.
+
 ## "no local LLM endpoint found"
 
 `hay ask` needs an OpenAI-compatible server and probed the usual ports without finding one. Run `hay llm setup` for the guided path, or point at your server: `hay ask --endpoint http://localhost:PORT/v1`. Search never needs an LLM; only `ask` does.

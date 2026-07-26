@@ -3,7 +3,7 @@
 // and wget; every other request is served straight from the static
 // build in ./out.
 {
-	"name": "haypile",
+	"name": "haypile-web",
 	"main": "worker/index.js",
 	"compatibility_date": "2026-07-17",
 	"compatibility_flags": ["nodejs_compat"],

@@ -5,7 +5,7 @@
 
 # Haypile
 
-**Your agent can read your files. It can't search them.** One binary that watches your folders, indexes every document, and hands your agent the right passages over MCP, each with a file and page citation. Nothing ever leaves your machine.
+**Private document search, for you and your agents.** One binary that watches your folders, indexes every document, and hands your agent the right passages over MCP, each with a file and page citation. Nothing ever leaves your machine.
 
 > Everyone says finding information in your files is like finding a needle in a haystack. Haypile is the haystack that finds its own needles.
 

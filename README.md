@@ -72,7 +72,7 @@ These are versioned with the code and will not be quietly redrawn:
 ## How it works
 
 ```
-folders -> watcher -> extract (pdf/docx/pptx/md/txt/html) -> chunk -> embed
+folders -> watcher -> extract (pdf/docx/pptx/md/txt/html/mbox) -> chunk -> embed
                                                             |
         you <- citations <- RRF merge <- FTS5 + vector search <- SQLite (one file)
 ```
@@ -159,7 +159,7 @@ hay llm setup            guided local LLM setup for hay ask
 
 | Version | Scope |
 |---|---|
-| v0.x (now) | CLI, REST API, MCP server, `hay web` local UI. Markdown, text, PDF, docx, pptx, HTML. Scanned-PDF OCR via your local vision LLM. |
+| v0.x (now) | CLI, REST API, MCP server, `hay web` local UI. Markdown, text, PDF, docx, pptx, HTML, mbox email. Scanned-PDF OCR via your local vision LLM. |
 | v1.x | Bundled OCR (no LLM required), Windows installer polish |
 | v2 | Optional larger embedding models, ANN index for very large corpora |
 | Pro | Team layer for offices: auth, roles, audit logs, shared indexes (paid) |

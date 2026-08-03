@@ -79,13 +79,39 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 	}
 	defer st.Close()
 
-	var report func(string)
+	var report func(ingest.Progress)
+	var clearLine func()
 	if progress {
 		out := cmd.OutOrStdout()
 		fmt.Fprintf(out, "Indexing %s…\n", path)
-		report = func(p string) { fmt.Fprintf(out, "  %s\n", p) }
+		if isTerminal(out) {
+			// One rewritten line with a fraction and an ETA; redraws
+			// are throttled so tiny files do not flood the terminal.
+			var eta etaTracker
+			var lastDraw time.Time
+			report = func(p ingest.Progress) {
+				now := time.Now()
+				if now.Sub(lastDraw) < 100*time.Millisecond && p.FilesDone != p.FilesTotal {
+					return
+				}
+				lastDraw = now
+				fmt.Fprintf(out, "\r\033[K  %s", progressLine(&eta, p, now))
+			}
+			clearLine = func() { fmt.Fprint(out, "\r\033[K") }
+		} else {
+			// Pipes and CI logs get one plain line per file, as before.
+			report = func(p ingest.Progress) {
+				if p.Path != "" {
+					fmt.Fprintf(out, "  %s\n", p.Path)
+				}
+			}
+		}
 	}
-	if stats, err = ingest.IndexFolder(st, path, tag, emb, report); err != nil {
+	stats, err = ingest.IndexFolder(st, path, tag, emb, report)
+	if clearLine != nil {
+		clearLine()
+	}
+	if err != nil {
 		return stats, "", err
 	}
 	if emb != nil {
@@ -110,6 +136,7 @@ func liveProgress(cmd *cobra.Command, c *daemon.Client, path string) func() {
 	done, stopped := make(chan struct{}), make(chan struct{})
 	go func() {
 		defer close(stopped)
+		var eta etaTracker
 		tick := time.NewTicker(700 * time.Millisecond)
 		defer tick.Stop()
 		for {
@@ -122,6 +149,12 @@ func liveProgress(cmd *cobra.Command, c *daemon.Client, path string) func() {
 				if err != nil {
 					continue
 				}
+				if s.Indexing != nil {
+					fmt.Fprintf(out, "\r\033[K  %s", progressLine(&eta, *s.Indexing, time.Now()))
+					continue
+				}
+				// The pass has not registered yet (or an old daemon is
+				// answering): global counts are still an honest pulse.
 				fmt.Fprintf(out, "\r\033[K  %d files, %d chunks so far…", s.Files, s.Chunks)
 			}
 		}

@@ -39,7 +39,7 @@ func fakeStreamLLM(t *testing.T, answer string, status int) *httptest.Server {
 
 func TestChatStreamDeliversTokens(t *testing.T) {
 	ts := fakeStreamLLM(t, "sixty days notice", http.StatusOK)
-	c := newClient(ts.URL, "fake-chat")
+	c := newClient(ts.URL, "fake-chat", "")
 
 	var got []string
 	err := c.ChatStream(context.Background(), "sys", "user", func(tok string) error {
@@ -59,7 +59,7 @@ func TestChatStreamDeliversTokens(t *testing.T) {
 
 func TestChatStreamSurfacesHTTPError(t *testing.T) {
 	ts := fakeStreamLLM(t, "", http.StatusInternalServerError)
-	c := newClient(ts.URL, "fake-chat")
+	c := newClient(ts.URL, "fake-chat", "")
 	err := c.ChatStream(context.Background(), "sys", "user", func(string) error { return nil })
 	if err == nil || !strings.Contains(err.Error(), "500") {
 		t.Fatalf("want a 500 error, got %v", err)
@@ -68,7 +68,7 @@ func TestChatStreamSurfacesHTTPError(t *testing.T) {
 
 func TestChatStreamStopsOnCallbackError(t *testing.T) {
 	ts := fakeStreamLLM(t, "one two three", http.StatusOK)
-	c := newClient(ts.URL, "fake-chat")
+	c := newClient(ts.URL, "fake-chat", "")
 	calls := 0
 	err := c.ChatStream(context.Background(), "sys", "user", func(string) error {
 		calls++

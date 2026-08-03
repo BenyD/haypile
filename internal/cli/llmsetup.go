@@ -68,7 +68,7 @@ func runLLMSetup(cmd *cobra.Command, p *prompter, model string, yes bool) error 
 	}
 
 	// Step 0: maybe everything already works.
-	if c, err := llm.Detect(ctx, "", ""); err == nil {
+	if c, err := llm.Detect(ctx, "", "", ""); err == nil {
 		fmt.Fprintf(out, "Found a running LLM server: %s (model: %s)\n", c.BaseURL, c.Model)
 		if err := verifyLLM(ctx, out, c); err != nil {
 			return err
@@ -121,7 +121,7 @@ func runLLMSetup(cmd *cobra.Command, p *prompter, model string, yes bool) error 
 	}
 
 	// Step 3: ensure a chat model is present (the one big download).
-	if _, err := llm.Detect(ctx, "http://localhost:11434/v1", ""); err != nil {
+	if _, err := llm.Detect(ctx, "http://localhost:11434/v1", "", ""); err != nil {
 		if !confirm(fmt.Sprintf("Download the %s model? (about 2GB, one time)", model)) {
 			fmt.Fprintf(out, "Skipped. Pull one yourself (ollama pull %s) and hay ask will find it.\n", model)
 			return nil
@@ -135,7 +135,7 @@ func runLLMSetup(cmd *cobra.Command, p *prompter, model string, yes bool) error 
 	}
 
 	// Step 4: prove the whole path with a real round trip.
-	c, err := llm.Detect(ctx, "", "")
+	c, err := llm.Detect(ctx, "", "", "")
 	if err != nil {
 		return fmt.Errorf("setup finished but no endpoint answers: %w", err)
 	}

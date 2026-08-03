@@ -30,3 +30,6 @@ website/.next/
 
 # Web UI toolchain (built output in internal/webui/dist IS committed)
 webui/node_modules/
+
+# Real-world eval corpus (fetched by eval/realworld/fetch-corpus.sh)
+eval/realworld/corpus/

@@ -56,7 +56,7 @@ func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	client, err := llm.Detect(r.Context(), "", "")
+	client, err := llm.Detect(r.Context(), "", "", "")
 	if err != nil {
 		writeError(w, http.StatusServiceUnavailable, err)
 		return

@@ -112,6 +112,7 @@ func (c *Client) OCRPage(ctx context.Context, pngImage []byte) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	c.authorize(req)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -181,7 +182,7 @@ func OCRHook() func(pngImage []byte) (string, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			explicit := os.Getenv("HAYPILE_OCR_MODEL")
-			c, err := Detect(ctx, "", explicit)
+			c, err := Detect(ctx, "", explicit, "")
 			if err != nil {
 				return
 			}

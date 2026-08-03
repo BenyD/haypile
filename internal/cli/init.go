@@ -121,7 +121,7 @@ func runInit(cmd *cobra.Command, folder, tag string, excludes []string, mcp, mcp
 	// Offer the LLM path only when it's actually missing — and never
 	// auto-download under --yes; hay llm setup owns those consents.
 	if interactive {
-		if _, err := llm.Detect(cmd.Context(), "", ""); err != nil {
+		if _, err := llm.Detect(cmd.Context(), "", "", ""); err != nil {
 			if p.yesNo("Set up a local LLM for `hay ask`? Search works without it. [y/N]", false) {
 				if err := runLLMSetup(cmd, p, recommendedModel, false); err != nil {
 					fmt.Fprintf(out, "LLM setup did not finish: %v\nRerun anytime: hay llm setup\n", err)

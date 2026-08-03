@@ -57,6 +57,16 @@ export HAYPILE_LLM_ENDPOINT=http://localhost:8080/v1
 export HAYPILE_LLM_MODEL=my-model
 ```
 
+## Use a cloud model (bring your own key)
+
+Any OpenAI-compatible API works, with your key:
+
+```sh
+hay ask "..." --endpoint https://api.example.com/v1 --key sk-...
+```
+
+Or set `HAYPILE_LLM_API_KEY` alongside the endpoint. The boundary: your documents are indexed locally, always. Opting in sends only the retrieved passages for that one question, to the endpoint you chose. Keys are refused over plain http to anything that is not localhost, so a typo cannot leak the secret in cleartext.
+
 ## Without an LLM, nothing breaks
 
 If no server is found, `hay ask` says so and shows the top passages for your question instead. Search never depends on an LLM, and neither does anything else in Haypile.

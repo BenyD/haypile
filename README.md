@@ -109,6 +109,14 @@ hay ask "what did the Meridian contract say about termination?"
 
 Generation uses any OpenAI-compatible server you already run (Ollama, LM Studio, llama.cpp, Jan), auto-detected on their usual ports, or set explicitly with `--endpoint` and `--model`. Without one, `hay ask` explains and shows the top passages instead. Search never needs an LLM.
 
+Prefer a cloud model for answers? Bring your own key:
+
+```sh
+hay ask --endpoint https://api.example.com/v1 --key sk-... "what changed in the lease?"
+```
+
+The boundary stays sharp: your documents are indexed locally, always. Opting in sends only the retrieved passages for that one question, to an endpoint you chose, with your key (`HAYPILE_LLM_API_KEY` works too). Keys are refused over plain http to anything that is not localhost.
+
 No local LLM yet? One guided command gets you there:
 
 ```sh

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.benyd/haypile",
+  "title": "Haypile",
+  "description": "Hybrid search over your local documents, with file and page citations. One binary, fully local.",
+  "websiteUrl": "https://haypile.sh",
+  "repository": {
+    "url": "https://github.com/BenyD/haypile",
+    "source": "github"
+  },
+  "version": "0.2.6",
+  "packages": [
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.2.6/haypile.mcpb",
+      "fileSha256": "REPLACE_WITH_SHA256_OF_RELEASED_MCPB",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

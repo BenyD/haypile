@@ -1,6 +1,6 @@
 ---
 name: haypile
-description: Search the user's local documents (PDF, docx, pptx, markdown, text, HTML) through Haypile, a local search daemon. Use when the user asks what their files say, wants passages from contracts, papers, or notes, or wants a folder indexed for search. Every result carries a file and page citation. Runs entirely on localhost.
+description: Search the user's local documents (PDF, docx, pptx, markdown, text, HTML, mbox email) through Haypile, a local search daemon. Use when the user asks what their files say, wants passages from contracts, papers, or notes, or wants a folder indexed for search. Every result carries a file and page citation. Runs entirely on localhost.
 ---
 
 # Haypile: local document search for agents

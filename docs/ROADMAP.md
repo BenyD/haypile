@@ -9,7 +9,7 @@ deeper "why". (It replaces the pre-launch PRD, whose scope has shipped.)
 ### Now (v0.x)
 
 - CLI, REST API, and MCP server, all in one binary.
-- Formats: Markdown, plain text, PDF, docx, pptx, HTML. PDF extraction is
+- Formats: Markdown, plain text, PDF, docx, pptx, HTML, mbox email archives. PDF extraction is
   layout-aware: paragraphs, headings, and bullets are rebuilt from the
   page geometry, and icon-font glyphs are dropped instead of indexed as
   junk characters.

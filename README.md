@@ -5,14 +5,23 @@
 
 # Haypile
 
-**Private search and Q&A for your documents.** One binary that watches your folders, indexes every document, and answers questions about them with citations. Nothing ever leaves your machine.
+**Your agent can read your files. It can't search them.** One binary that watches your folders, indexes every document, and hands your agent the right passages over MCP, each with a file and page citation. Nothing ever leaves your machine.
 
 > Everyone says finding information in your files is like finding a needle in a haystack. Haypile is the haystack that finds its own needles.
 
 ![hay demo: add a folder, search by meaning, verify zero outbound connections](docs/demo.gif)
 
 ```sh
+brew install BenyD/tap/hay
 hay add ~/Documents
+claude mcp add --transport http haypile http://localhost:11500/mcp
+```
+
+That is the whole setup. Claude Code (or Cursor, or anything that speaks MCP) can now search everything you indexed: `search_documents` returns ranked passages with citations, and the agent answers from them instead of guessing.
+
+It is a full standalone CLI too:
+
+```sh
 hay search "termination clause"
 hay ask "what did the Meridian contract say about termination?"
 ```
@@ -37,18 +46,18 @@ On Windows, run this in PowerShell:
 irm https://haypile.sh/install.ps1 | iex
 ```
 
-One binary, around 56MB, with the embedding model inside. No Python, no Docker, no vector database, no model downloads, no network.
+One binary, around 56MB, with the embedding model inside. No Python, no Docker, no vector database, no model downloads, no network. Text documents index fully offline; scanned PDFs need a local vision model for OCR (`hay llm setup`).
 
 ## Why
 
-Your documents (contracts, papers, notes, case files) are effectively unsearchable beyond filenames and exact keywords. Cloud AI tools fix that by making you upload everything to someone else's computer. Self-hosted RAG stacks fix it with Python environments, Docker, and a vector database to babysit.
+An agent can open any file you point it at. Finding the right one is the problem: grep matches words, not meaning, and a question about termination clauses does not contain the words the contract used. Reading whole documents to find one passage spends the context window the task needed. Cloud document tools fix this by uploading everything to someone else's computer, and self-hosted RAG stacks fix it with Python environments, Docker, and a vector database to babysit.
 
 Haypile is the missing option: **one binary, point it at folders, done.**
 
+- **Agent-ready.** MCP and REST on `localhost:11500`. `search_documents` gives Claude Code, Cursor, or your own scripts cited passages from your documents.
 - **Hybrid search.** Semantic and keyword, merged. Paraphrases match by meaning; case numbers match exactly.
 - **Citations always.** Every result and every answer points to the source file and page.
 - **Always fresh.** Folders are watched. Save a file and it is searchable in seconds.
-- **Built to build on.** REST API and MCP server on `localhost:11500`, so Claude Code, Cursor, or your own scripts can use your documents as a knowledge source.
 - **Verifiably private.** See below.
 
 ## Trust commitments

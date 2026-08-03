@@ -1,0 +1,11 @@
+# Smithery listing config: how an MCP client launches Haypile.
+# The stdio bridge autostarts the local daemon and proxies to it; clients
+# that speak Streamable HTTP can skip this and use http://localhost:11500/mcp.
+# Requires the hay binary on PATH: brew install BenyD/tap/hay
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+  commandFunction: |-
+    (config) => ({ command: "hay", args: ["mcp-stdio"] })

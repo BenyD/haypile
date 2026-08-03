@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.benyd/haypile",
+  "name": "io.github.BenyD/haypile",
   "title": "Haypile",
   "description": "Hybrid search over your local documents, with file and page citations. One binary, fully local.",
   "websiteUrl": "https://haypile.sh",
@@ -8,12 +8,44 @@
     "url": "https://github.com/BenyD/haypile",
     "source": "github"
   },
-  "version": "0.2.6",
+  "version": "0.3.0",
   "packages": [
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.2.6/haypile.mcpb",
-      "fileSha256": "REPLACE_WITH_SHA256_OF_RELEASED_MCPB",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_darwin_arm64.mcpb",
+      "fileSha256": "3b9216ab9c6e7e0e82d5cc205934adb89a840daa50ab897901e1b1688c095afc",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_darwin_amd64.mcpb",
+      "fileSha256": "6cbb254e8ed4300d4d1c1278cf611705dfbc0a5248416974b363f00526c5975e",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_linux_arm64.mcpb",
+      "fileSha256": "9ddb58e909a2ada6e4d649a4d0a8dd23a9b39953b55dc2485c9f0bf205af8372",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_linux_amd64.mcpb",
+      "fileSha256": "9f81ac3373ebb3b0518c67601388d664d42dfebbd7ec2efe2e0e29c760e90d0a",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_windows_amd64.mcpb",
+      "fileSha256": "421184b5c806247657fd91489f9057678c176e2009b47e26cd448930c2ca166b",
       "transport": {
         "type": "stdio"
       }

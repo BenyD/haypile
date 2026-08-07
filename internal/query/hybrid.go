@@ -30,8 +30,9 @@ func Hybrid(ctx context.Context, st *index.Store, emb embed.Embedder, q, tag str
 // HybridForAnswer is Hybrid for the RAG path: when nothing clears the
 // floors it falls back to the nearest chunks rather than returning
 // empty, so a question phrased unlike the corpus still gives the model
-// something to read. Only hay ask uses this; search and the MCP tool
-// use the strict Hybrid.
+// something to read. Only the ask paths use this — hay ask (direct, or
+// via the daemon's answer query mode) and the web UI's /api/ask; search
+// and the MCP tool use the strict Hybrid.
 func HybridForAnswer(ctx context.Context, st *index.Store, emb embed.Embedder, q, tag string, limit int) ([]index.Result, error) {
 	return hybrid(ctx, st, emb, q, tag, limit, true)
 }

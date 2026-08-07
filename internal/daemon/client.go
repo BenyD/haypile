@@ -161,10 +161,22 @@ func (c *Client) Status() (Status, error) {
 
 // Query runs a search through the daemon (warm model, fresh index).
 func (c *Client) Query(q, tag string, limit int) ([]index.Result, error) {
+	return c.query(QueryRequest{Query: q, Tag: tag, Limit: limit})
+}
+
+// QueryForAnswer is Query in answer mode: when nothing clears the
+// relevance floors the daemon falls back to the nearest chunks instead
+// of returning empty — the daemon-path twin of query.HybridForAnswer.
+// hay ask uses this; search stays on the strict Query.
+func (c *Client) QueryForAnswer(q, tag string, limit int) ([]index.Result, error) {
+	return c.query(QueryRequest{Query: q, Tag: tag, Limit: limit, Mode: "answer"})
+}
+
+func (c *Client) query(req QueryRequest) ([]index.Result, error) {
 	var out struct {
 		Results []QueryResult `json:"results"`
 	}
-	err := c.post("/api/query", QueryRequest{Query: q, Tag: tag, Limit: limit}, &out)
+	err := c.post("/api/query", req, &out)
 	if err != nil {
 		return nil, err
 	}

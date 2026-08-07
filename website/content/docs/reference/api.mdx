@@ -3,7 +3,7 @@ title: REST API
 description: The daemon's HTTP API on localhost:11500, plus the MCP endpoint.
 ---
 
-The daemon serves JSON over HTTP on `localhost:11500`. It listens on localhost only and has no auth in v0; do not expose it beyond the machine.
+The daemon serves JSON over HTTP on `localhost:11500`. It listens on localhost only and has no auth in v1; do not expose it beyond the machine. Requests from other hosts or browser origins are refused with `403`.
 
 ## POST /api/query
 
@@ -32,13 +32,14 @@ Response:
       "page": 4,
       "chunk": 11,
       "snippet": "Either party may terminate...",
+      "text": "Either party may terminate this Agreement...",
       "score": 0.0322
     }
   ]
 }
 ```
 
-`page` is 1-based and present for paginated formats; `0` means the format has no pages and `chunk` is the citation.
+`page` is 1-based and present for paginated formats; `0` means the format has no pages and `chunk` is the citation. `snippet` is the short display excerpt; `text` is the chunk's full text, for callers that answer or reason from the result.
 
 ## POST /api/ask
 
@@ -66,7 +67,7 @@ The response is `text/event-stream` with four event types, in order:
 | `error` | `{"message": "..."}` | Generation failed; the stream ends after this |
 | `done` | `{}` | Always last on success |
 
-Requires a local OpenAI-compatible server, same as `hay ask`.
+Requires an OpenAI-compatible server, same as `hay ask`; when none answers, the response is `503` before any stream starts, so clients can branch on the status code.
 
 ## GET /api/chunk
 
@@ -87,12 +88,24 @@ curl -s "localhost:11500/api/chunk?path=/Users/you/Documents/msa.pdf&chunk=11&wi
 Liveness plus identity. Clients use `db` to confirm they are talking to the daemon for the right index.
 
 ```json
-{ "ok": true, "version": "0.1.1", "db": "/Users/you/.haypile/haypile.db", "model": "bundled/all-MiniLM-L6-v2" }
+{ "ok": true, "version": "0.3.1", "db": "/Users/you/.haypile/haypile.db", "model": "bundled/all-MiniLM-L6-v2" }
 ```
 
 ## GET /api/status
 
-Everything `hay status` shows: uptime, sources, counts, pending indexing jobs, and the measured outbound connection count.
+Everything `hay status` shows: the health fields plus uptime, sources, counts, pending indexing jobs, and the measured outbound connection count.
+
+| Field | Meaning |
+| --- | --- |
+| `uptime_seconds` | Seconds since the daemon started |
+| `sources` | Indexed folders, each with `path`, `tag`, `files`, `chunks` |
+| `files`, `chunks` | Totals across all sources |
+| `pending_jobs` | Watcher changes queued for re-indexing |
+| `outbound_connections` | The daemon's live non-listening TCP connections, measured |
+| `outbound_note` | Present only when the count could not be measured; explains why |
+| `indexing` | Present only while an add pass runs: `phase` (`extracting` or `embedding`), `files_done`/`files_total`, `bytes_done`/`bytes_total`, `chunks_done`/`chunks_total` |
+
+`indexing` is what `hay add` polls to draw its live progress bar; scripts can poll it the same way.
 
 ## GET /api/sources
 
@@ -128,4 +141,16 @@ Point any MCP client at `http://localhost:11500/mcp`, or use `hay mcp-stdio` for
 
 ## Errors
 
-Non-200 responses carry `{"error": "message"}`. Bad requests are 400, server faults 500. MCP tool failures come back inside the JSON-RPC result with `isError: true` so agent models can read and react to them.
+Non-200 responses carry `{"error": "message"}`. The codes in use:
+
+| Code | When |
+| --- | --- |
+| `400` | Malformed request |
+| `403` | Request from another host or browser origin |
+| `404` | `/api/browse` on an unreadable path, `/api/chunk` for a chunk that does not exist |
+| `405` | Wrong method, e.g. `GET /mcp` |
+| `409` | `/api/pick` while a dialog is already open |
+| `503` | `/api/ask` when no LLM endpoint answers |
+| `500` | Server fault |
+
+MCP tool failures come back inside the JSON-RPC result with `isError: true` so agent models can read and react to them.

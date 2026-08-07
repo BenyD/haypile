@@ -23,9 +23,13 @@ pkill -f "hay serve"
 hay add ~/Documents      # restarts it with the current HAYPILE_DIR
 ```
 
-## "unsupported format (want .docx .htm .html .markdown .md .pdf .pptx .txt)"
+## "unsupported format (want .docx .htm .html .markdown .mbox .md .pdf .pptx .txt)"
 
 You pointed `hay add` at a single file of a type Haypile cannot parse. This errors only for single files, because you named that file deliberately; folder indexing skips unsupported files silently.
+
+## `hay add` has been running for a long time
+
+Working as designed: `hay add` waits for the whole pass, however long it takes, with no timeout. A large folder of PDFs can legitimately take an hour; the live progress line (or, in a pipe, the milestone lines) shows the phase, the fraction done, and the time left. Indexing also deliberately yields to your foreground work: the daemon runs at background priority and embedding leaves two CPU cores free, so a busy machine indexes slower than an idle one. If the progress line has genuinely stopped moving, check from another terminal: `curl -s localhost:11500/api/status` reports the in-flight pass under `indexing`.
 
 ## "Warning: N files could not be read and were skipped."
 

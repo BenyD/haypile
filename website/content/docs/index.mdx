@@ -43,13 +43,20 @@ Point Haypile at any folder with documents in it. PDF, docx, pptx, HTML, Markdow
 hay add ~/Documents
 ```
 
-You will see each file scroll by, then a summary:
+A live progress line tracks the pass, first extracting text, then embedding it, then a summary lands:
+
+```
+Indexing /Users/you/Documents…
+  extracting [######····]  62% · 194/312 files · ~1m left
+```
 
 ```
 Indexed 214 files (1892 chunks), 0 unchanged.
 Embedded 1892 chunks for semantic search (bundled/all-MiniLM-L6-v2).
 Try: hay search "something you remember"
 ```
+
+In a pipe or a CI log, where a line cannot redraw, the same progress arrives as one printed line per tenth of each phase.
 
 `hay add` also did the one-time setup: the index lives in a single SQLite file at `~/.haypile/haypile.db`, and a background daemon now watches the folder, re-indexing changed files within seconds. There is no server or database to manage.
 
@@ -86,7 +93,7 @@ hay status
 ```
 
 ```
-Daemon:   running (0.1.1, up 42s)
+Daemon:   running (0.3.1, up 42s)
 Index:    ~/.haypile/haypile.db
 Indexed:  1 sources, 214 files, 1892 chunks
 Model:    bundled/all-MiniLM-L6-v2

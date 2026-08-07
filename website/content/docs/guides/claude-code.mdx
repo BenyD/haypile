@@ -44,6 +44,21 @@ Any MCP client that supports the Streamable HTTP transport can use the same endp
 
 `hay mcp-stdio` bridges stdio to the daemon and auto-starts it if needed.
 
+## MCP bundles
+
+Every release also ships one `.mcpb` MCP Bundle per platform, on the [releases page](https://github.com/BenyD/haypile/releases). An `.mcpb` is a zip with a manifest that MCP clients, the official MCP registry, and Smithery understand: install it and the client launches `hay mcp-stdio` itself, no separate binary install or config file needed. Useful for clients that install servers from a bundle rather than a command line; on a machine where you also want the CLI, the normal install is still the way.
+
+## Discovery endpoints for agents
+
+An agent pointed at `haypile.sh` can learn all of this without scraping HTML:
+
+- Every docs page has a Markdown twin: append `.md` to the URL, or send `Accept: text/markdown`. [`/llms.txt`](https://haypile.sh/llms.txt) and [`/llms-full.txt`](https://haypile.sh/llms-full.txt) index them.
+- [`/.well-known/mcp.json`](https://haypile.sh/.well-known/mcp.json) is the MCP server card: packages to install and the local endpoint to connect to.
+- [`/.well-known/api-catalog`](https://haypile.sh/.well-known/api-catalog) (RFC 9727) points at the API and MCP documentation.
+- [`/.well-known/agent-skills/index.json`](https://haypile.sh/.well-known/agent-skills/index.json) lists the Haypile skill file agents can load.
+
+The docs site itself also exposes two in-browser (WebMCP) tools to agents that drive a browser: `search_haypile_docs` and `get_haypile_install_command`.
+
 ## A privacy note worth understanding
 
 Haypile itself makes zero external connections; that does not change here. But an MCP client is a separate program with its own behavior: when Claude Code calls `search_documents`, the passages that come back become part of Claude's context, which is sent to Anthropic like the rest of your conversation. Connecting an AI agent to your documents is a choice about that agent, not a change in what Haypile does. For fully offline question answering, use `hay ask` with a local LLM instead.

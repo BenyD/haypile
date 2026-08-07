@@ -94,17 +94,19 @@ func (l *Lazy) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 }
 
 // Embed runs the model over each text, fanned out across CPUs — indexing
-// throughput is the whole game for a local-first tool.
+// throughput matters for a local-first tool, but not more than the
+// machine it shares. A big first index runs for an hour; taking every
+// core for that hour turns the daemon into the loudest thing on the
+// laptop. Two cores of headroom keeps the fans and the foreground apps
+// out of the fight for a ~10-15% throughput cost (the cores given up
+// are the slowest ones on big.LITTLE machines).
 func (b *Bundled) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	out := make([][]float32, len(texts))
 	if len(texts) == 0 {
 		return out, nil
 	}
 
-	workers := runtime.GOMAXPROCS(0)
-	if workers > len(texts) {
-		workers = len(texts)
-	}
+	workers := embedWorkers(runtime.GOMAXPROCS(0), len(texts))
 	jobs := make(chan int)
 	var wg sync.WaitGroup
 	for w := 0; w < workers; w++ {
@@ -130,4 +132,17 @@ feed:
 	close(jobs)
 	wg.Wait()
 	return out, err
+}
+
+// embedWorkers picks the fan-out width: all cores minus two of headroom,
+// never below one, never more than there is work.
+func embedWorkers(cpus, texts int) int {
+	workers := cpus - 2
+	if workers < 1 {
+		workers = 1
+	}
+	if workers > texts {
+		workers = texts
+	}
+	return workers
 }

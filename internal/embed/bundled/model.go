@@ -227,14 +227,69 @@ func matmulTNarrow(out, in []float32, l linear, seq int) {
 	mm(out, in, l, seq, intermediate, hiddenDim)
 }
 
+// mm is register-blocked over the sequence: four positions share each
+// pass over a weight row. The naive loop re-streamed every weight matrix
+// once per position, so a 512-token chunk pulled the same 90MB of
+// weights through the cache 512 times — this loop is memory-bound long
+// before it is FLOP-bound. Blocking cuts weight traffic 4x and gives the
+// scheduler eight independent accumulator chains.
 func mm(out, in []float32, l linear, seq, inDim, outDim int) {
-	for i := 0; i < seq; i++ {
+	i := 0
+	for ; i+4 <= seq; i += 4 {
+		x0 := in[(i+0)*inDim : (i+1)*inDim]
+		x1 := in[(i+1)*inDim : (i+2)*inDim]
+		x2 := in[(i+2)*inDim : (i+3)*inDim]
+		x3 := in[(i+3)*inDim : (i+4)*inDim]
+		r0 := out[(i+0)*outDim : (i+1)*outDim]
+		r1 := out[(i+1)*outDim : (i+2)*outDim]
+		r2 := out[(i+2)*outDim : (i+3)*outDim]
+		r3 := out[(i+3)*outDim : (i+4)*outDim]
+		for o := 0; o < outDim; o++ {
+			w := l.w.data[o*inDim : (o+1)*inDim]
+			b := l.b[o]
+			d0, d1, d2, d3 := dot4(x0, x1, x2, x3, w)
+			r0[o] = d0 + b
+			r1[o] = d1 + b
+			r2[o] = d2 + b
+			r3[o] = d3 + b
+		}
+	}
+	for ; i < seq; i++ {
 		x := in[i*inDim : (i+1)*inDim]
 		row := out[i*outDim : (i+1)*outDim]
 		for o := 0; o < outDim; o++ {
 			row[o] = dot(x, l.w.data[o*inDim:(o+1)*inDim]) + l.b[o]
 		}
 	}
+}
+
+// dot4 runs four dot products against one shared weight row. Two
+// accumulators per row: eight chains total keeps the FMA pipeline full
+// without spilling accumulators to the stack.
+func dot4(x0, x1, x2, x3, w []float32) (d0, d1, d2, d3 float32) {
+	n := len(w)
+	x0, x1, x2, x3 = x0[:n], x1[:n], x2[:n], x3[:n] // hoist bounds checks
+	var a0, b0, a1, b1, a2, b2, a3, b3 float32
+	m := n &^ 1
+	for j := 0; j < m; j += 2 {
+		w0, w1 := w[j], w[j+1]
+		a0 += x0[j] * w0
+		b0 += x0[j+1] * w1
+		a1 += x1[j] * w0
+		b1 += x1[j+1] * w1
+		a2 += x2[j] * w0
+		b2 += x2[j+1] * w1
+		a3 += x3[j] * w0
+		b3 += x3[j+1] * w1
+	}
+	if m < n {
+		w0 := w[m]
+		a0 += x0[m] * w0
+		a1 += x1[m] * w0
+		a2 += x2[m] * w0
+		a3 += x3[m] * w0
+	}
+	return a0 + b0, a1 + b1, a2 + b2, a3 + b3
 }
 
 // dot uses four independent accumulators: breaking the loop-carried

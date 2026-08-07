@@ -36,7 +36,7 @@ search never touch the network either way.`,
 			var results []index.Result
 			if c := daemon.Discover(); c != nil {
 				var err error
-				if results, err = c.Query(question, tag, limit); err != nil {
+				if results, err = c.QueryForAnswer(question, tag, limit); err != nil {
 					return err
 				}
 			} else {

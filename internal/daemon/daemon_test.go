@@ -177,6 +177,9 @@ func TestDaemonRejectsBadRequests(t *testing.T) {
 	if code := post("/api/query", `{not json`); code != http.StatusBadRequest {
 		t.Errorf("bad json returned %d, want 400", code)
 	}
+	if code := post("/api/query", `{"query": "x", "mode": "bogus"}`); code != http.StatusBadRequest {
+		t.Errorf("unknown mode returned %d, want 400", code)
+	}
 	if code := post("/api/sources", fmt.Sprintf(`{"path": %q}`, filepath.Join(t.TempDir(), "nope"))); code != http.StatusBadRequest {
 		t.Errorf("missing folder returned %d, want 400", code)
 	}
@@ -459,6 +462,81 @@ func TestAskWithoutLLMIs503(t *testing.T) {
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil || body.Error == "" {
 		t.Fatalf("503 without an explanation: %v (%v)", body, err)
+	}
+}
+
+// fakeEmbedServer is a minimal OpenAI-compatible /embeddings endpoint
+// with fixed semantics: doc chunks (they mention cabinets) embed in one
+// direction, everything else — the question — orthogonal to it, so no
+// vector hit ever clears the relevance floors.
+func fakeEmbedServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/embeddings" {
+			http.NotFound(w, r)
+			return
+		}
+		var req struct {
+			Input []string `json:"input"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		type datum struct {
+			Index     int       `json:"index"`
+			Embedding []float32 `json:"embedding"`
+		}
+		var out struct {
+			Data []datum `json:"data"`
+		}
+		for i, text := range req.Input {
+			vec := []float32{1, 0}
+			if strings.Contains(text, "cabinets") {
+				vec = []float32{0, 1}
+			}
+			out.Data = append(out.Data, datum{Index: i, Embedding: vec})
+		}
+		json.NewEncoder(w).Encode(out)
+	}))
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+// TestQueryAnswerModeFallsBackToNearest covers the hay ask daemon path:
+// a question that shares no words with the corpus and scores under the
+// vector floors gets nothing from the strict query, but answer mode
+// returns the nearest chunks so the LLM has something to read.
+func TestQueryAnswerModeFallsBackToNearest(t *testing.T) {
+	emb := fakeEmbedServer(t)
+	t.Setenv("HAYPILE_EMBED_ENDPOINT", emb.URL)
+	t.Setenv("HAYPILE_EMBED_MODEL", "fake")
+
+	c := startDaemon(t)
+	docs := t.TempDir()
+	writeDoc(t, docs, "kitchen.md", "Going with white oak cabinets for the renovation.")
+	if _, err := c.AddSource(docs, ""); err != nil {
+		t.Fatalf("AddSource: %v", err)
+	}
+
+	const question = "what warm finish did we pick"
+	strict, err := c.Query(question, "", 5)
+	if err != nil {
+		t.Fatalf("Query: %v", err)
+	}
+	if len(strict) != 0 {
+		t.Fatalf("strict query = %+v, want none (precondition for the fallback)", strict)
+	}
+
+	results, err := c.QueryForAnswer(question, "", 5)
+	if err != nil {
+		t.Fatalf("QueryForAnswer: %v", err)
+	}
+	if len(results) == 0 || !strings.HasSuffix(results[0].Path, "kitchen.md") {
+		t.Fatalf("answer mode = %+v, want kitchen.md via nearest-chunk fallback", results)
+	}
+	if results[0].Text == "" {
+		t.Error("answer-mode result missing full chunk text for the LLM")
 	}
 }
 

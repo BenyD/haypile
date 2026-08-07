@@ -279,11 +279,15 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, st)
 }
 
-// QueryRequest is POST /api/query.
+// QueryRequest is POST /api/query. Mode selects the retrieval strategy:
+// empty or "search" is the strict Hybrid (an honest empty answer when
+// nothing clears the relevance floors), "answer" is HybridForAnswer (the
+// RAG path: fall back to the nearest chunks rather than return empty).
 type QueryRequest struct {
 	Query string `json:"query"`
 	Tag   string `json:"tag,omitempty"`
 	Limit int    `json:"limit,omitempty"`
+	Mode  string `json:"mode,omitempty"`
 }
 
 // QueryResult is one hit; Page 0 means the format has no pages.
@@ -311,8 +315,17 @@ func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
 	if req.Limit <= 0 || req.Limit > 100 {
 		req.Limit = 10
 	}
+	retrieve := query.Hybrid
+	switch req.Mode {
+	case "", "search":
+	case "answer":
+		retrieve = query.HybridForAnswer
+	default:
+		writeError(w, http.StatusBadRequest, fmt.Errorf("unknown mode %q (want \"search\" or \"answer\")", req.Mode))
+		return
+	}
 
-	results, err := query.Hybrid(r.Context(), s.st, s.emb, req.Query, req.Tag, req.Limit)
+	results, err := retrieve(r.Context(), s.st, s.emb, req.Query, req.Tag, req.Limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return

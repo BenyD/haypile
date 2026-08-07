@@ -3,7 +3,7 @@
   "version": "0.0.6",
   "private": true,
   "scripts": {
-    "build": "cp ../install.sh public/install.sh && cp ../install.ps1 public/install.ps1 && next build",
+    "build": "cp ../install.sh public/install.sh && cp ../install.ps1 public/install.ps1 && mkdir -p public/agent-skills/haypile && cp ../SKILL.md public/agent-skills/haypile/SKILL.md && cp ../server.json public/mcp-server.json && next build",
     "dev": "next dev",
     "start": "serve out",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",

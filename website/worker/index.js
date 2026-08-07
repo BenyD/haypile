@@ -168,7 +168,17 @@ export default {
       return Response.redirect(reqUrl.toString(), 301);
     }
 
-    if (/\b(curl|wget)\b/i.test(ua)) {
+    // The install scripts: an explicit path from any client, or the bare
+    // domain piped into a shell.
+    //
+    // The user-agent tests are scoped to the root path. They used to
+    // match every path, so `curl haypile.sh/llms.txt` answered with the
+    // installer instead of the file asked for, which is the wrong answer
+    // for the discovery documents below and for any agent reaching for a
+    // URL with a non-browser HTTP client.
+    const root = reqUrl.pathname === '/';
+
+    if (reqUrl.pathname === '/install.sh' || (root && /\b(curl|wget)\b/i.test(ua))) {
       const script = await env.ASSETS.fetch(new URL('/install.sh', reqUrl.origin));
       return new Response(script.body, {
         status: script.status,
@@ -176,9 +186,11 @@ export default {
       });
     }
 
-    // PowerShell installers: an explicit /install.ps1 path, or `irm
-    // haypile.sh | iex` (its user agent carries "PowerShell").
-    if (reqUrl.pathname === '/install.ps1' || /\bpowershell\b/i.test(ua)) {
+    // `irm haypile.sh | iex` carries "PowerShell" in its user agent.
+    // No leading \b: PowerShell 7 sends "PowerShell/7.x" but the
+    // Windows-bundled 5.1 sends "WindowsPowerShell/5.1.x", which has no
+    // word boundary before "Power".
+    if (reqUrl.pathname === '/install.ps1' || (root && /powershell\b/i.test(ua))) {
       const script = await env.ASSETS.fetch(new URL('/install.ps1', reqUrl.origin));
       return new Response(script.body, {
         status: script.status,

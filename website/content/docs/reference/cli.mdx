@@ -51,6 +51,7 @@ Retrieves relevant passages and has a local LLM answer from them with citations.
 | --- | --- | --- |
 | `--endpoint` | OpenAI-compatible base URL | auto-detect |
 | `--model` | Model to request | first chat model listed |
+| `--key` | API key for the endpoint, sent as a Bearer token | none, or `HAYPILE_LLM_API_KEY` |
 | `--tag` | Only retrieve from folders with this tag | all |
 | `--limit` | Passages given to the model | 6 |
 
@@ -75,7 +76,7 @@ Runs the daemon in the foreground: REST API and MCP on `localhost:11500`, plus t
 | `--host` | Bind address | 127.0.0.1 |
 | `--port` | API port | 11500 |
 
-Binding beyond localhost prints a loud warning: the API has no auth in v0.
+Binding beyond localhost prints a loud warning: the API has no auth in v1.
 
 ## hay llm setup
 

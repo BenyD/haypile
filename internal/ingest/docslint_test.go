@@ -35,6 +35,17 @@ func TestDocsListEverySupportedFormat(t *testing.T) {
 	}
 }
 
+// TestTroubleshootingQuotesRealFormatError: the troubleshooting page
+// quotes the unsupported-format message verbatim as a heading; pin it to
+// the string the binary actually builds so a new format updates both.
+func TestTroubleshootingQuotesRealFormatError(t *testing.T) {
+	doc := readDoc(t, "website/content/docs/reference/troubleshooting.mdx")
+	want := "unsupported format (want " + supportedList() + ")"
+	if !strings.Contains(doc, want) {
+		t.Errorf("reference/troubleshooting.mdx does not quote the current error %q", want)
+	}
+}
+
 // TestDocsListEveryEnvVar: every HAYPILE_* variable the code reads must
 // appear in the CLI reference's environment table.
 func TestDocsListEveryEnvVar(t *testing.T) {

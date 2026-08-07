@@ -7,7 +7,7 @@ Haypile runs itself: the daemon starts when needed and the index migrates on its
 
 ## The daemon lifecycle
 
-The daemon is a single background process serving the API on `127.0.0.1:11500` and watching your indexed folders. `hay add`, `hay web`, and `hay mcp-stdio` start it automatically when it is not running; its address and pid live in `~/.haypile/daemon.json`.
+The daemon is a single background process serving the API on `127.0.0.1:11500` and watching your indexed folders. `hay add`, `hay web`, and `hay mcp-stdio` start it automatically when it is not running; its address and pid live in `~/.haypile/daemon.json`. It runs at background priority (nice 10, below-normal on Windows) so indexing never wins a fight with your foreground work; queries are millisecond-scale and never notice.
 
 To run it in the foreground instead, with logs in your terminal:
 

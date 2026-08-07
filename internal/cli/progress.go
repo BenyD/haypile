@@ -70,21 +70,55 @@ func progressLine(t *etaTracker, p ingest.Progress, now time.Time) string {
 	return renderProgress(p, eta, ok)
 }
 
+// phaseUnits reports what a phase counts, for display. Extraction shows
+// files because that is what the user recognises on screen; the ETA reads
+// bytes separately, since file counts lie when one PDF is 800 pages.
+func phaseUnits(p ingest.Progress) (done, total int64, unit string) {
+	if p.Phase == ingest.PhaseEmbedding {
+		return int64(p.ChunksDone), int64(p.ChunksTotal), "chunks"
+	}
+	return int64(p.FilesDone), int64(p.FilesTotal), "files"
+}
+
+// milestoneReporter emits one line per tenth of a phase, for output that
+// cannot be rewritten in place: pipes, CI logs, and backgrounded runs.
+// Those get no live bar at all, so a long embedding pass prints nothing
+// between "Indexing …" and the summary — on a large corpus that is an
+// hour of silence that reads as a hang.
+type milestoneReporter struct {
+	phase string
+	last  int // last tenth emitted; -1 before the first in a phase
+}
+
+// step returns the line to print for this snapshot, or "" when it does
+// not cross into a new tenth. A nil snapshot (the pass has not registered
+// yet) is not progress, so it prints nothing.
+func (m *milestoneReporter) step(p *ingest.Progress) string {
+	if p == nil {
+		return ""
+	}
+	if p.Phase != m.phase {
+		m.phase, m.last = p.Phase, -1
+	}
+	done, total, unit := phaseUnits(*p)
+	if total <= 0 {
+		return ""
+	}
+	pct := int(done * 100 / total)
+	if tenth := pct / 10; tenth > m.last {
+		m.last = tenth
+		return fmt.Sprintf("  %-10s %3d%% · %s/%s %s",
+			p.Phase, pct, count(done), count(total), unit)
+	}
+	return ""
+}
+
 // renderProgress is the one-line live view of an indexing pass:
 //
 //	extracting [#####·····] 48% · 151/312 files · ~2m left
 //	embedding  [##········] 23% · 1.4k/6.2k chunks · ~4m left
 func renderProgress(p ingest.Progress, eta time.Duration, haveETA bool) string {
-	var done, total int64
-	var unit string
-	switch p.Phase {
-	case ingest.PhaseEmbedding:
-		done, total = int64(p.ChunksDone), int64(p.ChunksTotal)
-		unit = "chunks"
-	default:
-		done, total = int64(p.FilesDone), int64(p.FilesTotal)
-		unit = "files"
-	}
+	done, total, unit := phaseUnits(p)
 	if total <= 0 {
 		return fmt.Sprintf("%s…", p.Phase)
 	}

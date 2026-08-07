@@ -8,44 +8,44 @@
     "url": "https://github.com/BenyD/haypile",
     "source": "github"
   },
-  "version": "0.3.0",
+  "version": "0.3.1",
   "packages": [
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_darwin_arm64.mcpb",
-      "fileSha256": "3b9216ab9c6e7e0e82d5cc205934adb89a840daa50ab897901e1b1688c095afc",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_darwin_arm64.mcpb",
+      "fileSha256": "a39ce52f514df9b144c4464618fb5a450f0062384b6e1993c3da8deffe3705be",
       "transport": {
         "type": "stdio"
       }
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_darwin_amd64.mcpb",
-      "fileSha256": "6cbb254e8ed4300d4d1c1278cf611705dfbc0a5248416974b363f00526c5975e",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_darwin_amd64.mcpb",
+      "fileSha256": "488a1b4cfcd2ccb6f8610b5815a3cdbf76d67bb08f56d366cf9d66a765099058",
       "transport": {
         "type": "stdio"
       }
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_linux_arm64.mcpb",
-      "fileSha256": "9ddb58e909a2ada6e4d649a4d0a8dd23a9b39953b55dc2485c9f0bf205af8372",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_linux_arm64.mcpb",
+      "fileSha256": "dbb1e737941a45013db95100e5af59d5367d65dd7f3c6d2c22e4888fe9febcc5",
       "transport": {
         "type": "stdio"
       }
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_linux_amd64.mcpb",
-      "fileSha256": "9f81ac3373ebb3b0518c67601388d664d42dfebbd7ec2efe2e0e29c760e90d0a",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_linux_amd64.mcpb",
+      "fileSha256": "e88ab5e58280faaaf9190d61d3d317f7fc10a3ab99c01774493da00d0f684041",
       "transport": {
         "type": "stdio"
       }
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.0/haypile_0.3.0_windows_amd64.mcpb",
-      "fileSha256": "421184b5c806247657fd91489f9057678c176e2009b47e26cd448930c2ca166b",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_windows_amd64.mcpb",
+      "fileSha256": "69a9cd3728489a6de4dabf87df866cf378f20dcc1aa25bee0d84637afb55703a",
       "transport": {
         "type": "stdio"
       }

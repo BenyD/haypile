@@ -19,8 +19,14 @@ Exclude patterns, comma-separated [none]: drafts/**, *.bak
 Wrote /Users/you/cases/acme-litigation/.haypile.yml
 Make these docs available to AI tools here (Claude Code, Cursor)? [Y/n]
 Wrote /Users/you/cases/acme-litigation/.mcp.json (Claude Code will pick it up in this folder)
+Indexing /Users/you/cases/acme-litigation…
 Indexed 214 files (1892 chunks), 0 unchanged.
+Embedded 1892 chunks for semantic search (bundled/all-MiniLM-L6-v2).
+
+Done. Try: hay search "something in acme-litigation"
 ```
+
+While it indexes, a live progress line shows the phase, fraction, and time left.
 
 Three questions, each with a sensible default. If no local LLM is detected it also offers `hay llm setup` at the end.
 

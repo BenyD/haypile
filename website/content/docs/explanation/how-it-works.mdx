@@ -25,6 +25,8 @@ Search operates on chunks of roughly 500 tokens, not whole documents. Chunking i
 
 Every chunk goes through a sentence-embedding model (all-MiniLM-L6-v2) that maps text to a 384-dimensional vector where similar meanings land near each other. The model ships inside the binary, quantized to 23MB, and runs in pure Go. This is unusual and deliberate: it is why semantic search works on a fresh install with zero downloads, no Python, and no GPU. Identical text is never embedded twice; a content-addressed cache sees through file renames and re-indexes.
 
+Embedding is also built to lose fights for the machine: it fans out across all CPU cores minus two of headroom, and the daemon runs itself at background priority. An idle machine indexes at full speed; a busy one yields to whatever you are actually doing, at the cost of a somewhat longer first index.
+
 ### Store
 
 Everything lands in one SQLite file: the chunk text in an FTS5 full-text index, the vectors as blobs beside them. SQLite in WAL mode means searches keep answering while indexing writes. There is no server, no schema to migrate by hand, and backup is `cp`.

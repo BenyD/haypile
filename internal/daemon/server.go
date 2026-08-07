@@ -68,6 +68,8 @@ func (s *Server) getIndexing() *ingest.Progress {
 // store, watches every registered source, serves the API on addr, and
 // cleans up its runtime file on the way out.
 func Run(ctx context.Context, addr, version string) error {
+	beNice() // background indexer, background priority
+
 	dbPath := index.DefaultPath()
 	st, err := index.Open(dbPath)
 	if err != nil {

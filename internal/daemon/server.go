@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -39,12 +40,36 @@ type Server struct {
 	dbPath  string
 	version string
 	started time.Time
+
+	// indexing is the live snapshot of an in-flight add pass, nil when
+	// idle. Status serves it so the CLI can show a fraction and an ETA
+	// instead of a spinner.
+	mu       sync.Mutex
+	indexing *ingest.Progress
+}
+
+func (s *Server) setIndexing(p *ingest.Progress) {
+	s.mu.Lock()
+	s.indexing = p
+	s.mu.Unlock()
+}
+
+func (s *Server) getIndexing() *ingest.Progress {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.indexing == nil {
+		return nil
+	}
+	cp := *s.indexing
+	return &cp
 }
 
 // Run starts the daemon and blocks until ctx is cancelled: it opens the
 // store, watches every registered source, serves the API on addr, and
 // cleans up its runtime file on the way out.
 func Run(ctx context.Context, addr, version string) error {
+	beNice() // background indexer, background priority
+
 	dbPath := index.DefaultPath()
 	st, err := index.Open(dbPath)
 	if err != nil {
@@ -219,6 +244,8 @@ type Status struct {
 	// asserted.
 	OutboundConns int    `json:"outbound_connections"`
 	OutboundNote  string `json:"outbound_note,omitempty"`
+	// Indexing is the in-flight add pass, if one is running.
+	Indexing *ingest.Progress `json:"indexing,omitempty"`
 }
 
 type SourceInfo struct {
@@ -248,6 +275,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		st.Chunks += src.Chunks
 	}
 	st.OutboundConns, st.OutboundNote = countOutbound()
+	st.Indexing = s.getIndexing()
 	writeJSON(w, http.StatusOK, st)
 }
 
@@ -325,7 +353,10 @@ func (s *Server) handleAddSource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	stats, err := ingest.IndexFolder(s.st, req.Path, req.Tag, s.emb, nil)
+	defer s.setIndexing(nil)
+	stats, err := ingest.IndexFolder(s.st, req.Path, req.Tag, s.emb, func(p ingest.Progress) {
+		s.setIndexing(&p)
+	})
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return

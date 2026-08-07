@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Provider } from '@/components/provider';
 import { StructuredData } from '@/components/structured-data';
+import { WebMCP } from '@/components/webmcp';
 import './global.css';
 
 const inter = Inter({
@@ -64,6 +65,7 @@ export default function Layout({ children }: LayoutProps<'/'>) {
     <html lang="en" className={inter.className} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         <StructuredData />
+        <WebMCP />
         <Provider>{children}</Provider>
       </body>
     </html>

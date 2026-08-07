@@ -40,7 +40,7 @@ func TestOCRPageSendsImageAndReturnsText(t *testing.T) {
 	var got visionRequest
 	srv := fakeVisionLLM(t, "Scanned invoice from ACME", http.StatusOK, &got)
 
-	c := newClient(srv.URL+"/v1", "llava")
+	c := newClient(srv.URL+"/v1", "llava", "")
 	text, err := c.OCRPage(context.Background(), []byte("png-bytes"))
 	if err != nil {
 		t.Fatalf("OCRPage: %v", err)
@@ -143,7 +143,7 @@ func TestOCRPageStripsGroundingMarkup(t *testing.T) {
 		"text [115, 240, 882, 326]The moisture reading in silo B-7 stands at 14.2 percent.",
 		http.StatusOK, nil)
 
-	c := newClient(srv.URL+"/v1", "unlimited-ocr")
+	c := newClient(srv.URL+"/v1", "unlimited-ocr", "")
 	text, err := c.OCRPage(context.Background(), []byte("png-bytes"))
 	if err != nil {
 		t.Fatalf("OCRPage: %v", err)

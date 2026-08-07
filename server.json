@@ -1,0 +1,54 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.BenyD/haypile",
+  "title": "Haypile",
+  "description": "Hybrid search over your local documents, with file and page citations. One binary, fully local.",
+  "websiteUrl": "https://haypile.sh",
+  "repository": {
+    "url": "https://github.com/BenyD/haypile",
+    "source": "github"
+  },
+  "version": "0.3.1",
+  "packages": [
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_darwin_arm64.mcpb",
+      "fileSha256": "a39ce52f514df9b144c4464618fb5a450f0062384b6e1993c3da8deffe3705be",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_darwin_amd64.mcpb",
+      "fileSha256": "488a1b4cfcd2ccb6f8610b5815a3cdbf76d67bb08f56d366cf9d66a765099058",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_linux_arm64.mcpb",
+      "fileSha256": "dbb1e737941a45013db95100e5af59d5367d65dd7f3c6d2c22e4888fe9febcc5",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_linux_amd64.mcpb",
+      "fileSha256": "e88ab5e58280faaaf9190d61d3d317f7fc10a3ab99c01774493da00d0f684041",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/BenyD/haypile/releases/download/v0.3.1/haypile_0.3.1_windows_amd64.mcpb",
+      "fileSha256": "69a9cd3728489a6de4dabf87df866cf378f20dcc1aa25bee0d84637afb55703a",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

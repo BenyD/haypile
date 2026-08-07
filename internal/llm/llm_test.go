@@ -47,7 +47,7 @@ func fakeLLM(t *testing.T, models []string, answer string, lastPrompt *string) *
 
 func TestDetectPicksFirstChatModel(t *testing.T) {
 	srv := fakeLLM(t, []string{"nomic-embed-text", "all-minilm", "llama3.2"}, "", nil)
-	c, err := Detect(context.Background(), srv.URL+"/v1", "")
+	c, err := Detect(context.Background(), srv.URL+"/v1", "", "")
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestDetectPicksFirstChatModel(t *testing.T) {
 
 func TestDetectHonorsExplicitModel(t *testing.T) {
 	srv := fakeLLM(t, []string{"llama3.2"}, "", nil)
-	c, err := Detect(context.Background(), srv.URL+"/v1", "mistral")
+	c, err := Detect(context.Background(), srv.URL+"/v1", "mistral", "")
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestDetectNoEndpoint(t *testing.T) {
 	if _, err := http.Get("http://localhost:11434/v1/models"); err == nil {
 		t.Skip("a real local LLM server is running")
 	}
-	_, err := Detect(context.Background(), "", "")
+	_, err := Detect(context.Background(), "", "", "")
 	if !errors.Is(err, ErrNoEndpoint) {
 		t.Fatalf("err = %v, want ErrNoEndpoint", err)
 	}
@@ -81,7 +81,7 @@ func TestDetectNoEndpoint(t *testing.T) {
 
 func TestDetectErrorsWhenOnlyEmbeddingModels(t *testing.T) {
 	srv := fakeLLM(t, []string{"nomic-embed-text"}, "", nil)
-	if _, err := Detect(context.Background(), srv.URL+"/v1", ""); err == nil {
+	if _, err := Detect(context.Background(), srv.URL+"/v1", "", ""); err == nil {
 		t.Fatal("want an error when the endpoint has no chat model")
 	}
 }
@@ -101,7 +101,7 @@ func TestAnswerBuildsCitedPrompt(t *testing.T) {
 	var prompt string
 	srv := fakeLLM(t, []string{"llama3.2"}, "Sixty days notice is required [1].", &prompt)
 
-	c, err := Detect(context.Background(), srv.URL+"/v1", "")
+	c, err := Detect(context.Background(), srv.URL+"/v1", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

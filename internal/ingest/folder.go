@@ -39,13 +39,34 @@ type Stats struct {
 	ScanFailed  int
 }
 
+// Progress phases, in the order a pass runs them.
+const (
+	PhaseExtracting = "extracting"
+	PhaseEmbedding  = "embedding"
+)
+
+// Progress is a snapshot of one indexing pass. Extraction is measured in
+// files and bytes because that is what the walk knows up front; embedding
+// is measured in chunks because extraction only just created them. Totals
+// are fixed for the life of a phase, so done/total is an honest fraction.
+type Progress struct {
+	Phase       string `json:"phase"`
+	Path        string `json:"path,omitempty"` // file just finished (extracting)
+	FilesDone   int    `json:"files_done"`
+	FilesTotal  int    `json:"files_total"`
+	BytesDone   int64  `json:"bytes_done"`
+	BytesTotal  int64  `json:"bytes_total"`
+	ChunksDone  int    `json:"chunks_done"`
+	ChunksTotal int    `json:"chunks_total"`
+}
+
 // IndexFolder walks folder, indexes every supported file into st, and prunes
 // records for files that vanished from disk. Unchanged files (same content
 // hash) are skipped. If emb is non-nil, chunks are embedded for semantic
 // search, cheapest first: the content-addressed cache is consulted before
-// the model runs. progress, if non-nil, is called with each path as it is
-// indexed.
-func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progress func(path string)) (Stats, error) {
+// the model runs. progress, if non-nil, receives a snapshot after every
+// file and every embedding batch.
+func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progress func(Progress)) (Stats, error) {
 	var stats Stats
 
 	abs, err := filepath.Abs(folder)
@@ -68,10 +89,11 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 		if err != nil {
 			return stats, err
 		}
-		if err := indexFile(st, sourceID, abs, &stats, progress); err != nil {
+		tr := newTracker(1, info.Size(), progress)
+		if err := indexFile(st, sourceID, abs, &stats, tr.fileDone); err != nil {
 			return stats, err
 		}
-		return stats, embedIfConfigured(st, sourceID, emb, &stats)
+		return stats, embedIfConfigured(st, sourceID, emb, &stats, tr.embedDone)
 	}
 
 	// The folder's own config supplies the tag default and the exclude
@@ -91,32 +113,59 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 		return stats, err
 	}
 
+	// walkEligible visits every file the pass will touch; used once to
+	// total the work (so progress can be a fraction, not a spinner) and
+	// once to do it. The counting walk is filesystem-metadata only, so
+	// its cost is noise next to extraction.
+	walkEligible := func(visit func(path string, size int64) error) error {
+		return filepath.WalkDir(abs, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			rel, relErr := filepath.Rel(abs, path)
+			if relErr != nil {
+				return relErr
+			}
+			if d.IsDir() {
+				// Skip hidden directories (.git and friends).
+				if name := d.Name(); strings.HasPrefix(name, ".") && path != abs {
+					return filepath.SkipDir
+				}
+				if rel != "." && cfg.Excluded(rel) {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !Supported(path) || cfg.Excluded(rel) {
+				return nil
+			}
+			info, err := d.Info()
+			if err != nil {
+				return nil // vanished mid-walk; the next pass sees the truth
+			}
+			return visit(path, info.Size())
+		})
+	}
+
+	var totalFiles int
+	var totalBytes int64
+	if progress != nil {
+		if err := walkEligible(func(_ string, size int64) error {
+			totalFiles++
+			totalBytes += size
+			return nil
+		}); err != nil {
+			return stats, err
+		}
+	}
+	tr := newTracker(totalFiles, totalBytes, progress)
+
 	seen := make(map[string]bool)
-	err = filepath.WalkDir(abs, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, relErr := filepath.Rel(abs, path)
-		if relErr != nil {
-			return relErr
-		}
-		if d.IsDir() {
-			// Skip hidden directories (.git and friends).
-			if name := d.Name(); strings.HasPrefix(name, ".") && path != abs {
-				return filepath.SkipDir
-			}
-			if rel != "." && cfg.Excluded(rel) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !Supported(path) || cfg.Excluded(rel) {
-			return nil
-		}
+	err = walkEligible(func(path string, _ int64) error {
 		// A file that fails to index is not pruned: its previous version
 		// stays searchable until a readable version appears.
 		seen[path] = true
-		return indexFile(st, sourceID, path, &stats, progress)
+		return indexFile(st, sourceID, path, &stats, tr.fileDone)
 	})
 	if err != nil {
 		return stats, err
@@ -125,7 +174,48 @@ func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progre
 		return stats, err
 	}
 
-	return stats, embedIfConfigured(st, sourceID, emb, &stats)
+	return stats, embedIfConfigured(st, sourceID, emb, &stats, tr.embedDone)
+}
+
+// tracker turns per-file and per-batch events into Progress snapshots.
+// One exists per pass; a nil callback makes every method a no-op.
+type tracker struct {
+	cb  func(Progress)
+	cur Progress
+}
+
+func newTracker(files int, bytes int64, cb func(Progress)) *tracker {
+	return &tracker{cb: cb, cur: Progress{
+		Phase:      PhaseExtracting,
+		FilesTotal: files,
+		BytesTotal: bytes,
+	}}
+}
+
+// fileDone records one visited file, whatever its outcome: skipped and
+// failed files are finished work too, or the fraction would lie on every
+// re-add of an already-indexed folder.
+func (t *tracker) fileDone(path string, size int64) {
+	if t == nil || t.cb == nil {
+		return
+	}
+	t.cur.Path = path
+	t.cur.FilesDone++
+	t.cur.BytesDone += size
+	t.cb(t.cur)
+}
+
+// embedDone reports embedding progress in chunks. The first call flips
+// the phase so a watcher can switch its display immediately.
+func (t *tracker) embedDone(done, total int) {
+	if t == nil || t.cb == nil {
+		return
+	}
+	t.cur.Phase = PhaseEmbedding
+	t.cur.Path = ""
+	t.cur.ChunksDone = done
+	t.cur.ChunksTotal = total
+	t.cb(t.cur)
 }
 
 // IndexOne brings a single changed file under an existing source up to
@@ -136,17 +226,24 @@ func IndexOne(st *index.Store, sourceID int64, path string, emb embed.Embedder) 
 	if err := indexFile(st, sourceID, path, &stats, nil); err != nil {
 		return stats, err
 	}
-	return stats, embedIfConfigured(st, sourceID, emb, &stats)
+	return stats, embedIfConfigured(st, sourceID, emb, &stats, nil)
 }
 
 // indexFile brings one file up to date in the index. Unreadable or
 // unparseable files are counted, not fatal — one bad document must never
-// abort a pass; only storage errors do.
-func indexFile(st *index.Store, sourceID int64, path string, stats *Stats, progress func(path string)) error {
+// abort a pass; only storage errors do. done, if non-nil, is called once
+// whatever the outcome: every visited file is finished work.
+func indexFile(st *index.Store, sourceID int64, path string, stats *Stats, done func(path string, size int64)) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		stats.Failed++
+		if done != nil {
+			done(path, 0)
+		}
 		return nil
+	}
+	if done != nil {
+		defer done(path, int64(len(data)))
 	}
 	sum := sha256.Sum256(data)
 	sha := hex.EncodeToString(sum[:]) + ":" + extractVersion
@@ -189,24 +286,23 @@ func indexFile(st *index.Store, sourceID int64, path string, stats *Stats, progr
 
 	stats.Indexed++
 	stats.Chunks += len(chunks)
-	if progress != nil {
-		progress(path)
-	}
 	return nil
 }
 
-func embedIfConfigured(st *index.Store, sourceID int64, emb embed.Embedder, stats *Stats) error {
+func embedIfConfigured(st *index.Store, sourceID int64, emb embed.Embedder, stats *Stats, done func(done, total int)) error {
 	if emb == nil {
 		return nil
 	}
-	embedded, err := embedMissing(st, sourceID, emb)
+	embedded, err := embedMissing(st, sourceID, emb, done)
 	stats.Embedded = embedded
 	return err
 }
 
 // embedMissing vectorizes every chunk under the source that has no vector
 // yet. Cache hits are stored directly; misses go to the embedder in batches.
-func embedMissing(st *index.Store, sourceID int64, emb embed.Embedder) (int, error) {
+// done, if non-nil, is told how many of the pass's chunks are stored so far;
+// it fires immediately with (0, total) so watchers can flip phase at once.
+func embedMissing(st *index.Store, sourceID int64, emb embed.Embedder, done func(done, total int)) (int, error) {
 	if err := st.SetEmbedModel(emb.Model()); err != nil {
 		return 0, err
 	}
@@ -214,6 +310,14 @@ func embedMissing(st *index.Store, sourceID int64, emb embed.Embedder) (int, err
 	if err != nil {
 		return 0, err
 	}
+
+	stored := 0
+	report := func() {
+		if done != nil {
+			done(stored, len(missing))
+		}
+	}
+	report()
 
 	var pending []index.ChunkText
 	var pendingSHAs []string
@@ -237,8 +341,10 @@ func embedMissing(st *index.Store, sourceID int64, emb embed.Embedder) (int, err
 			}
 		}
 		embedded += len(pending)
+		stored += len(pending)
 		pending = pending[:0]
 		pendingSHAs = pendingSHAs[:0]
+		report()
 		return nil
 	}
 
@@ -254,6 +360,8 @@ func embedMissing(st *index.Store, sourceID int64, emb embed.Embedder) (int, err
 			if err := st.PutEmbedding(m.ID, sha, emb.Model(), cached); err != nil {
 				return embedded, err
 			}
+			stored++
+			report()
 			continue
 		}
 

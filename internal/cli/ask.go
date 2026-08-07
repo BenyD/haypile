@@ -14,7 +14,7 @@ import (
 )
 
 func newAskCmd() *cobra.Command {
-	var endpoint, model, tag string
+	var endpoint, model, key, tag string
 	var limit int
 
 	cmd := &cobra.Command{
@@ -23,7 +23,10 @@ func newAskCmd() *cobra.Command {
 		Long: `Retrieves the most relevant passages and asks a local LLM to answer from
 them, citing sources. Generation needs any OpenAI-compatible server you
 already run (Ollama, LM Studio, llama.cpp, Jan, ...) — auto-detected on
-common ports. Haypile itself never talks to the network.`,
+common ports. Prefer a cloud model? Point --endpoint at any
+OpenAI-compatible API and pass --key: only the retrieved passages for
+this one question are sent, and only because you asked. Indexing and
+search never touch the network either way.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
@@ -55,7 +58,7 @@ common ports. Haypile itself never talks to the network.`,
 				return nil
 			}
 
-			client, err := llm.Detect(cmd.Context(), endpoint, model)
+			client, err := llm.Detect(cmd.Context(), endpoint, model, key)
 			if err != nil {
 				// No LLM is a degraded mode, not a failure: show what
 				// search found and how to enable answers.
@@ -89,6 +92,7 @@ common ports. Haypile itself never talks to the network.`,
 
 	cmd.Flags().StringVar(&endpoint, "endpoint", "", "OpenAI-compatible base URL (default: auto-detect local servers)")
 	cmd.Flags().StringVar(&model, "model", "", "model name to request (default: first chat model the endpoint lists)")
+	cmd.Flags().StringVar(&key, "key", "", "API key for the endpoint, sent as a Bearer token (or HAYPILE_LLM_API_KEY)")
 	cmd.Flags().StringVar(&tag, "tag", "", "restrict retrieval to folders indexed with this tag")
 	cmd.Flags().IntVar(&limit, "limit", 6, "how many passages to retrieve as context")
 	return cmd

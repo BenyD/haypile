@@ -1,8 +1,10 @@
 // Package llm speaks to whatever OpenAI-compatible server the user
-// already runs (Ollama, LM Studio, llama.cpp, Jan, …). Haypile ships no
-// LLM and never will: generation is delegated, search never depends on
-// it, and no request ever leaves this machine unless the user points
-// --endpoint somewhere else on purpose.
+// already runs (Ollama, LM Studio, llama.cpp, Jan, …) — or, when they
+// bring their own API key, whatever cloud endpoint they point it at.
+// Haypile ships no LLM and never will: generation is delegated, search
+// never depends on it, and no request ever leaves this machine unless
+// the user points --endpoint somewhere else on purpose. Only the
+// retrieved passages for one question ever travel; indexing does not.
 package llm
 
 import (
@@ -12,7 +14,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -36,25 +40,40 @@ var ErrNoEndpoint = errors.New(
 type Client struct {
 	BaseURL string
 	Model   string
+	apiKey  string
 	http    *http.Client
 }
 
 // Detect returns a client for the configured or first responding local
 // endpoint. Explicit configuration (flag > env) is trusted verbatim;
-// probing is only for the zero-config path.
+// probing is only for the zero-config path. A key makes cloud endpoints
+// usable and is sent as a Bearer token; the local probes never need one.
 //
 //	HAYPILE_LLM_ENDPOINT  base URL, e.g. http://localhost:11434/v1
 //	HAYPILE_LLM_MODEL     model name to request
-func Detect(ctx context.Context, endpoint, model string) (*Client, error) {
+//	HAYPILE_LLM_API_KEY   Bearer token for endpoints that require one
+func Detect(ctx context.Context, endpoint, model, key string) (*Client, error) {
 	if endpoint == "" {
 		endpoint = os.Getenv("HAYPILE_LLM_ENDPOINT")
 	}
 	if model == "" {
 		model = os.Getenv("HAYPILE_LLM_MODEL")
 	}
+	if key == "" {
+		key = os.Getenv("HAYPILE_LLM_API_KEY")
+	}
 
 	if endpoint != "" {
-		c := newClient(endpoint, model)
+		// A key on a cleartext connection to another machine would hand
+		// the secret to the network. Loopback is fine (Ollama is http).
+		if key != "" {
+			if u, err := url.Parse(endpoint); err == nil &&
+				u.Scheme == "http" && !isLoopbackHost(u.Hostname()) {
+				return nil, fmt.Errorf(
+					"refusing to send an API key over plain http to %s (use https)", u.Hostname())
+			}
+		}
+		c := newClient(endpoint, model, key)
 		if c.Model == "" {
 			if err := c.pickModel(ctx); err != nil {
 				return nil, fmt.Errorf("%s: %w", endpoint, err)
@@ -64,7 +83,7 @@ func Detect(ctx context.Context, endpoint, model string) (*Client, error) {
 	}
 
 	for _, ep := range wellKnownEndpoints {
-		c := newClient(ep.url, model)
+		c := newClient(ep.url, model, key)
 		probeCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 		err := c.pickModel(probeCtx)
 		cancel()
@@ -73,6 +92,22 @@ func Detect(ctx context.Context, endpoint, model string) (*Client, error) {
 		}
 	}
 	return nil, ErrNoEndpoint
+}
+
+// isLoopbackHost reports whether host names this machine.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// authorize attaches the Bearer token, when there is one.
+func (c *Client) authorize(req *http.Request) {
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 }
 
 // Ping reports whether an OpenAI-compatible server answers at baseURL.
@@ -92,10 +127,11 @@ func Ping(ctx context.Context, baseURL string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-func newClient(baseURL, model string) *Client {
+func newClient(baseURL, model, key string) *Client {
 	return &Client{
 		BaseURL: strings.TrimRight(baseURL, "/"),
 		Model:   model,
+		apiKey:  key,
 		// Local models on modest hardware are slow; generous ceiling.
 		http: &http.Client{Timeout: 5 * time.Minute},
 	}
@@ -107,6 +143,7 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.authorize(req)
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, err
@@ -207,6 +244,7 @@ func (c *Client) Chat(ctx context.Context, system, user string) (string, error) 
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	c.authorize(req)
 
 	resp, err := c.http.Do(req)
 	if err != nil {

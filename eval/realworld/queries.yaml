@@ -1,0 +1,92 @@
+# Real-world eval query set: runs against the corpus fetched by
+# fetch-corpus.sh. Same shape as eval/queries.yaml. Each query must rank
+# an expected file in the top 3. The aggregate recall@3 is the number that
+# matters: it is recorded per release as the retrieval baseline, and a drop
+# is a regression. Semantic cases deliberately use different words than the
+# document; keyword cases guard exact-identifier matching.
+
+queries:
+  # Papers: two-column layouts, dense notation
+  - query: "how many attention heads in the base transformer"
+    expects: ["corpus/papers/attention-is-all-you-need.pdf"]
+    kind: semantic
+
+  - query: "masked language model pretraining objective"
+    expects: ["corpus/papers/bert.pdf"]
+    kind: semantic
+
+  - query: "few-shot learning without gradient updates"
+    expects: ["corpus/papers/gpt3.pdf"]
+    kind: semantic
+
+  - query: "siamese network sentence embeddings cosine similarity"
+    expects: ["corpus/papers/sentence-bert.pdf"]
+    kind: semantic
+
+  - query: "dual encoder passage retrieval in-batch negatives"
+    expects: ["corpus/papers/dense-passage-retrieval.pdf"]
+    kind: semantic
+
+  - query: "zero-shot retrieval benchmark heterogeneous tasks"
+    expects: ["corpus/papers/beir-benchmark.pdf"]
+    kind: semantic
+
+  - query: "graph based approximate nearest neighbor search skip list layers"
+    expects: ["corpus/papers/hnsw.pdf"]
+    kind: semantic
+
+  - query: "reinforcement learning from human feedback to follow instructions"
+    expects: ["corpus/papers/instructgpt.pdf"]
+    kind: semantic
+
+  - query: "grouped-query attention"
+    expects: ["corpus/papers/llama2.pdf"]
+    kind: keyword
+
+  - query: "HNSW"
+    expects: ["corpus/papers/hnsw.pdf"]
+    kind: keyword
+
+  # RFCs: exact identifiers and protocol semantics
+  - query: "which status code means the gateway did not get a timely response upstream"
+    expects: ["corpus/rfcs/rfc9110-http-semantics.pdf"]
+    kind: semantic
+
+  - query: "stale-while-revalidate"
+    expects: ["corpus/rfcs/rfc9111-http-caching.pdf"]
+    kind: keyword
+
+  - query: "moving a connection to a new network path without breaking it"
+    expects: ["corpus/rfcs/rfc9000-quic.pdf"]
+    kind: semantic
+
+  - query: "memory-hard password hashing recommended parameters"
+    expects: ["corpus/rfcs/rfc9106-argon2.pdf"]
+    kind: semantic
+
+  # Law: the paraphrase cases a lawyer would type
+  - query: "safeguards for individually identifiable health information"
+    expects: ["corpus/law/hipaa.pdf"]
+    kind: semantic
+
+  - query: "obligations of financial institutions to protect customers' personal information"
+    expects: ["corpus/law/gramm-leach-bliley.pdf"]
+    kind: semantic
+
+  - query: "orderly liquidation of failing financial companies"
+    expects: ["corpus/law/dodd-frank.pdf"]
+    kind: semantic
+
+  # Gov: tables and control catalogs
+  - query: "never trust a network location implicitly verify every request"
+    expects: ["corpus/gov/nist-800-207-zero-trust.pdf"]
+    kind: semantic
+
+  - query: "requirements for memorized secrets minimum length"
+    expects: ["corpus/gov/nist-800-63b-authentication.pdf"]
+    kind: semantic
+
+  # Finance: plain prose
+  - query: "insurance float funds our investments"
+    expects: ["corpus/finance/berkshire-2023.pdf", "corpus/finance/berkshire-2022.pdf", "corpus/finance/berkshire-2021.pdf"]
+    kind: semantic

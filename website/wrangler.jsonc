@@ -1,7 +1,9 @@
-// The haypile.sh site as a Worker with static assets. The script runs
-// only for the root path, where it serves the install script to curl
-// and wget; every other request is served straight from the static
-// build in ./out.
+// The haypile.sh site as a Worker with static assets. The script runs on
+// every request: it canonicalizes scheme and host, serves the install
+// script to curl and wget on the root path, answers the agent discovery
+// documents under /.well-known, and hands Markdown to clients that ask
+// for it. Everything else is served straight from the static build in
+// ./out.
 {
 	"name": "haypile-web",
 	"main": "worker/index.js",

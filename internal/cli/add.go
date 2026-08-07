@@ -79,13 +79,48 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 	}
 	defer st.Close()
 
-	var report func(string)
+	var report func(ingest.Progress)
+	var clearLine func()
 	if progress {
 		out := cmd.OutOrStdout()
 		fmt.Fprintf(out, "Indexing %s…\n", path)
-		report = func(p string) { fmt.Fprintf(out, "  %s\n", p) }
+		if isTerminal(out) {
+			// One rewritten line with a fraction and an ETA; redraws
+			// are throttled so tiny files do not flood the terminal.
+			var eta etaTracker
+			var lastDraw time.Time
+			report = func(p ingest.Progress) {
+				now := time.Now()
+				if now.Sub(lastDraw) < 100*time.Millisecond && p.FilesDone != p.FilesTotal {
+					return
+				}
+				lastDraw = now
+				fmt.Fprintf(out, "\r\033[K  %s", progressLine(&eta, p, now))
+			}
+			clearLine = func() { fmt.Fprint(out, "\r\033[K") }
+		} else {
+			// Pipes and CI logs get one plain line per file, as before,
+			// plus a tenth-of-the-way line through embedding — that phase
+			// names no files, so it used to print nothing at all.
+			var ms milestoneReporter
+			report = func(p ingest.Progress) {
+				if p.Phase == ingest.PhaseEmbedding {
+					if line := ms.step(&p); line != "" {
+						fmt.Fprintln(out, line)
+					}
+					return
+				}
+				if p.Path != "" {
+					fmt.Fprintf(out, "  %s\n", p.Path)
+				}
+			}
+		}
 	}
-	if stats, err = ingest.IndexFolder(st, path, tag, emb, report); err != nil {
+	stats, err = ingest.IndexFolder(st, path, tag, emb, report)
+	if clearLine != nil {
+		clearLine()
+	}
+	if err != nil {
 		return stats, "", err
 	}
 	if emb != nil {
@@ -96,32 +131,54 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 
 // liveProgress keeps a folder-sized index pass from looking hung. The
 // daemon owns the work and answers one blocking request, so its own
-// growing counts are the only honest signal: poll them onto a single
-// rewritten line. Returns the stop function, which clears the line so
-// the summary lands on a clean row. Interactive terminals only; pipes
-// and CI logs get the one plain line and nothing else.
+// growing counts are the only honest signal: poll them. A terminal gets
+// a single rewritten line with a fraction and an ETA; pipes, CI logs and
+// backgrounded runs cannot rewrite, so they get one line per tenth of a
+// phase instead of the silence they used to get. Returns the stop
+// function, which clears the line so the summary lands on a clean row.
 func liveProgress(cmd *cobra.Command, c *daemon.Client, path string) func() {
 	out := cmd.OutOrStdout()
 	fmt.Fprintf(out, "Indexing %s…\n", path)
-	if !isTerminal(out) {
-		return func() {}
+	tty := isTerminal(out)
+
+	// Redraws are cheap on a terminal and worth doing often. Milestones
+	// fire at most ten times a phase, so polling that fast buys nothing.
+	interval := 700 * time.Millisecond
+	if !tty {
+		interval = 2 * time.Second
 	}
 
 	done, stopped := make(chan struct{}), make(chan struct{})
 	go func() {
 		defer close(stopped)
-		tick := time.NewTicker(700 * time.Millisecond)
+		var eta etaTracker
+		var ms milestoneReporter
+		tick := time.NewTicker(interval)
 		defer tick.Stop()
 		for {
 			select {
 			case <-done:
-				fmt.Fprint(out, "\r\033[K")
+				if tty {
+					fmt.Fprint(out, "\r\033[K")
+				}
 				return
 			case <-tick.C:
 				s, err := c.Status()
 				if err != nil {
 					continue
 				}
+				if !tty {
+					if line := ms.step(s.Indexing); line != "" {
+						fmt.Fprintln(out, line)
+					}
+					continue
+				}
+				if s.Indexing != nil {
+					fmt.Fprintf(out, "\r\033[K  %s", progressLine(&eta, *s.Indexing, time.Now()))
+					continue
+				}
+				// The pass has not registered yet (or an old daemon is
+				// answering): global counts are still an honest pulse.
 				fmt.Fprintf(out, "\r\033[K  %d files, %d chunks so far…", s.Files, s.Chunks)
 			}
 		}

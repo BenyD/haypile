@@ -27,4 +27,5 @@ Rules:
 
 | Date | Commit | recall@3 | Notes |
 |---|---|---|---|
+| 2026-08-08 | 4083155 | 0.95 (19/20) | v0.3.1. Same corpus and the same single zero-trust miss after the register-blocked matmul (#41), which changes fp32 accumulation order; retrieval unmoved. Eval ran in 11 minutes. |
 | 2026-08-03 | 53c740f | 0.95 (19/20) | 47 files, 9,532 chunks, bundled all-MiniLM-L6-v2. Single miss: the zero-trust paraphrase ("never trust a network location...") retrieves QUIC/HTTP RFCs over NIST 800-207; a known semantic gap, kept as-is to catch a future model that closes it. |

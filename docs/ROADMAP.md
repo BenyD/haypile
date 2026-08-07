@@ -20,9 +20,22 @@ deeper "why". (It replaces the pre-launch PRD, whose scope has shipped.)
   offline / one-binary contract intact.
 - Bundled embedder with hybrid search (FTS5 keyword + vectors, merged with
   Reciprocal Rank Fusion), `hay ask` against any local OpenAI-compatible
-  endpoint, and per-folder setup via `hay init`.
+  endpoint, and per-folder setup via `hay init`. `hay ask` can also use a
+  cloud endpoint with your own key (`--key`), an explicit opt-in that sends
+  only the retrieved passages for that question; indexing stays local always.
+- Indexing that behaves on a workstation: a 1.43x faster embedding kernel,
+  embedding leaves two CPU cores free, the daemon runs at background
+  priority, `hay add` never times out on large folders, and progress is
+  visible everywhere (live bar with ETA on a terminal, milestone lines in
+  pipes and CI).
 - Install: Homebrew, the shell one-liner (`curl haypile.sh | sh`), and the
   PowerShell one-liner for Windows (`irm haypile.sh/install.ps1 | iex`).
+  Releases also ship per-platform MCP bundles (.mcpb), published to the
+  official MCP registry and Smithery.
+- Agent-facing distribution: every docs page has a Markdown twin, and the
+  site serves discovery documents (`/.well-known/mcp.json`, `api-catalog`,
+  agent skills, `llms.txt`) plus WebMCP tools, so agents can find, install,
+  and connect Haypile without scraping HTML.
 - `hay web`: the bundled local web UI (search, streamed answers, click a
   citation to read the passage in place). Free, AGPL, single-user, served
   by the daemon on localhost, embedded in the binary with no build step.
@@ -94,6 +107,9 @@ Resolved calls worth keeping a record of:
   touching the user's machine.
 - **Retrieval quality is measured, not vibed.** An eval set of expected
   results runs on every retrieval-affecting change; no silent regressions.
+  The real-world baseline stands at recall@3 0.95 (v0.3.1), which is why a
+  larger default embedder is a v2 option rather than a priority: the eval
+  says the bundled model is not the bottleneck.
 
 ## Non-goals (for now)
 

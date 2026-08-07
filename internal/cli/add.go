@@ -99,8 +99,17 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 			}
 			clearLine = func() { fmt.Fprint(out, "\r\033[K") }
 		} else {
-			// Pipes and CI logs get one plain line per file, as before.
+			// Pipes and CI logs get one plain line per file, as before,
+			// plus a tenth-of-the-way line through embedding — that phase
+			// names no files, so it used to print nothing at all.
+			var ms milestoneReporter
 			report = func(p ingest.Progress) {
+				if p.Phase == ingest.PhaseEmbedding {
+					if line := ms.step(&p); line != "" {
+						fmt.Fprintln(out, line)
+					}
+					return
+				}
 				if p.Path != "" {
 					fmt.Fprintf(out, "  %s\n", p.Path)
 				}
@@ -122,31 +131,46 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 
 // liveProgress keeps a folder-sized index pass from looking hung. The
 // daemon owns the work and answers one blocking request, so its own
-// growing counts are the only honest signal: poll them onto a single
-// rewritten line. Returns the stop function, which clears the line so
-// the summary lands on a clean row. Interactive terminals only; pipes
-// and CI logs get the one plain line and nothing else.
+// growing counts are the only honest signal: poll them. A terminal gets
+// a single rewritten line with a fraction and an ETA; pipes, CI logs and
+// backgrounded runs cannot rewrite, so they get one line per tenth of a
+// phase instead of the silence they used to get. Returns the stop
+// function, which clears the line so the summary lands on a clean row.
 func liveProgress(cmd *cobra.Command, c *daemon.Client, path string) func() {
 	out := cmd.OutOrStdout()
 	fmt.Fprintf(out, "Indexing %s…\n", path)
-	if !isTerminal(out) {
-		return func() {}
+	tty := isTerminal(out)
+
+	// Redraws are cheap on a terminal and worth doing often. Milestones
+	// fire at most ten times a phase, so polling that fast buys nothing.
+	interval := 700 * time.Millisecond
+	if !tty {
+		interval = 2 * time.Second
 	}
 
 	done, stopped := make(chan struct{}), make(chan struct{})
 	go func() {
 		defer close(stopped)
 		var eta etaTracker
-		tick := time.NewTicker(700 * time.Millisecond)
+		var ms milestoneReporter
+		tick := time.NewTicker(interval)
 		defer tick.Stop()
 		for {
 			select {
 			case <-done:
-				fmt.Fprint(out, "\r\033[K")
+				if tty {
+					fmt.Fprint(out, "\r\033[K")
+				}
 				return
 			case <-tick.C:
 				s, err := c.Status()
 				if err != nil {
+					continue
+				}
+				if !tty {
+					if line := ms.step(s.Indexing); line != "" {
+						fmt.Fprintln(out, line)
+					}
 					continue
 				}
 				if s.Indexing != nil {

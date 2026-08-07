@@ -57,6 +57,53 @@ func TestRenderProgress(t *testing.T) {
 	}
 }
 
+func TestMilestoneReporterEmitsOncePerTenth(t *testing.T) {
+	var m milestoneReporter
+	var lines []string
+	// One snapshot per chunk through a small pass: 10 lines, not 100.
+	for done := 0; done <= 100; done++ {
+		p := ingest.Progress{Phase: ingest.PhaseEmbedding, ChunksDone: done, ChunksTotal: 100}
+		if line := m.step(&p); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	if len(lines) != 11 { // 0%, 10% … 100%
+		t.Fatalf("got %d lines, want 11:\n%s", len(lines), strings.Join(lines, "\n"))
+	}
+	if !strings.Contains(lines[0], "0%") || !strings.Contains(lines[0], "embedding") {
+		t.Errorf("first line %q", lines[0])
+	}
+	if !strings.Contains(lines[10], "100%") || !strings.Contains(lines[10], "100/100 chunks") {
+		t.Errorf("last line %q", lines[10])
+	}
+}
+
+func TestMilestoneReporterResetsPerPhase(t *testing.T) {
+	var m milestoneReporter
+	ext := ingest.Progress{Phase: ingest.PhaseExtracting, FilesDone: 10, FilesTotal: 10}
+	if line := m.step(&ext); !strings.Contains(line, "extracting") {
+		t.Fatalf("extracting line %q", line)
+	}
+	// Embedding starts at 0% after extraction hit 100%; a shared counter
+	// would swallow every line of the new phase.
+	emb := ingest.Progress{Phase: ingest.PhaseEmbedding, ChunksDone: 0, ChunksTotal: 500}
+	if line := m.step(&emb); !strings.Contains(line, "embedding") {
+		t.Fatalf("embedding start swallowed, got %q", line)
+	}
+}
+
+func TestMilestoneReporterIgnoresEmptySnapshots(t *testing.T) {
+	var m milestoneReporter
+	if line := m.step(nil); line != "" {
+		t.Errorf("nil snapshot printed %q", line)
+	}
+	// A phase that has not counted its work yet is not 0% of anything.
+	p := ingest.Progress{Phase: ingest.PhaseEmbedding, ChunksTotal: 0}
+	if line := m.step(&p); line != "" {
+		t.Errorf("zero-total snapshot printed %q", line)
+	}
+}
+
 func TestFmtETA(t *testing.T) {
 	cases := []struct {
 		d    time.Duration

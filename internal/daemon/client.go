@@ -21,7 +21,22 @@ import (
 type Client struct {
 	base string
 	http *http.Client
+	// long is for requests whose duration is the user's data, not the
+	// network: indexing a folder runs synchronously and takes as long as
+	// it takes. It carries no timeout because every fixed value is a
+	// guess that eventually cuts off a legitimate pass — a 47-PDF corpus
+	// took 54 minutes on a laptop and blew through the 10-minute cap this
+	// replaced, reporting a failure for work the daemon went on to finish
+	// correctly. A daemon that dies still breaks the connection and ends
+	// the request; a daemon that wedges shows a stalled fraction on the
+	// progress line, which is the honest signal to interrupt.
+	long *http.Client
 }
+
+// callTimeout bounds the ordinary request/response calls. Generous enough
+// for a first query that has to load the embedding model, short enough
+// that an unreachable daemon fails while the user is still watching.
+const callTimeout = 2 * time.Minute
 
 // CurrentVersion is the version of this binary, set by the CLI at
 // startup. Discover uses it to spot a daemon left running by an older
@@ -42,7 +57,8 @@ func Discover() *Client {
 	}
 	c := &Client{
 		base: "http://" + rt.Addr,
-		http: &http.Client{Timeout: 10 * time.Minute}, // indexing a big folder is slow
+		http: &http.Client{Timeout: callTimeout},
+		long: &http.Client{}, // no timeout; see the field comment
 	}
 	h, err := c.health()
 	if err != nil || !h.OK || h.DB != index.DefaultPath() {
@@ -169,7 +185,7 @@ func (c *Client) AddSource(path, tag string) (ingest.Stats, error) {
 	if err != nil {
 		return stats, err
 	}
-	return stats, c.post("/api/sources", AddSourceRequest{Path: abs, Tag: tag}, &stats)
+	return stats, c.postWith(c.long, "/api/sources", AddSourceRequest{Path: abs, Tag: tag}, &stats)
 }
 
 // RemoveSource un-indexes and un-watches a source.
@@ -216,11 +232,15 @@ func (c *Client) get(path string, v any) error {
 }
 
 func (c *Client) post(path string, body, v any) error {
+	return c.postWith(c.http, path, body, v)
+}
+
+func (c *Client) postWith(hc *http.Client, path string, body, v any) error {
 	data, err := json.Marshal(body)
 	if err != nil {
 		return err
 	}
-	resp, err := c.http.Post(c.base+path, "application/json", bytes.NewReader(data))
+	resp, err := hc.Post(c.base+path, "application/json", bytes.NewReader(data))
 	if err != nil {
 		return err
 	}

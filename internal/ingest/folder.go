@@ -12,6 +12,7 @@ import (
 
 	"github.com/BenyD/haypile/internal/embed"
 	"github.com/BenyD/haypile/internal/index"
+	"github.com/BenyD/haypile/internal/pathnorm"
 )
 
 // embedBatch is how many chunks are sent to the embedder per call.
@@ -69,7 +70,10 @@ type Progress struct {
 func IndexFolder(st *index.Store, folder, tag string, emb embed.Embedder, progress func(Progress)) (Stats, error) {
 	var stats Stats
 
-	abs, err := filepath.Abs(folder)
+	// Canonical casing here means every stored path — the source root and
+	// the walked files under it — carries the actual on-disk casing, so
+	// exact SQL equality is enough everywhere downstream.
+	abs, err := pathnorm.Canon(folder)
 	if err != nil {
 		return stats, err
 	}

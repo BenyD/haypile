@@ -2,12 +2,12 @@ package cli
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/BenyD/haypile/internal/daemon"
 	"github.com/BenyD/haypile/internal/index"
+	"github.com/BenyD/haypile/internal/pathnorm"
 )
 
 func newRemoveCmd() *cobra.Command {
@@ -16,7 +16,7 @@ func newRemoveCmd() *cobra.Command {
 		Short: "Un-index a folder and stop watching it",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			abs, err := filepath.Abs(args[0])
+			abs, err := pathnorm.Canon(args[0])
 			if err != nil {
 				return err
 			}

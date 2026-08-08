@@ -22,6 +22,7 @@ import (
 	"github.com/BenyD/haypile/internal/index"
 	"github.com/BenyD/haypile/internal/ingest"
 	"github.com/BenyD/haypile/internal/llm"
+	"github.com/BenyD/haypile/internal/pathnorm"
 	"github.com/BenyD/haypile/internal/query"
 	"github.com/BenyD/haypile/internal/webui"
 )
@@ -374,7 +375,9 @@ func (s *Server) handleAddSource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	abs, err := filepath.Abs(req.Path)
+	// Same canonical form IndexFolder just stored, so the watcher's root
+	// matches the sources table.
+	abs, err := pathnorm.Canon(req.Path)
 	if err == nil {
 		if werr := s.watcher.watchSource(abs); werr != nil {
 			fmt.Printf("warning: cannot watch %s: %v\n", abs, werr)
@@ -389,7 +392,7 @@ func (s *Server) handleRemoveSource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	abs, err := filepath.Abs(req.Path)
+	abs, err := pathnorm.Canon(req.Path)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return

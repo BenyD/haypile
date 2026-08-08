@@ -21,6 +21,7 @@ Request:
 | `query` | string | Required. Search text |
 | `tag` | string | Optional. Restrict to folders with this tag |
 | `limit` | int | Optional. Max results, default 10, cap 100 |
+| `mode` | string | Optional. `search` (default) returns only results that clear the relevance floors, possibly none. `answer` falls back to the nearest chunks instead of returning empty; it is what `hay ask` uses for retrieval |
 
 Response:
 

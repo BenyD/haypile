@@ -48,6 +48,8 @@ jobs:
       - name: fetch embedding model
         run: ./hack/fetch-model.sh
         shell: bash
+      - name: vet
+        run: go vet ./...
       - name: test
         run: go test ./... -race
 

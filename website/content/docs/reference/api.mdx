@@ -107,6 +107,10 @@ Everything `hay status` shows: the health fields plus uptime, sources, counts, p
 
 `indexing` is what `hay add` polls to draw its live progress bar; scripts can poll it the same way.
 
+## POST /api/shutdown
+
+Asks the daemon to exit gracefully; this is what `hay stop` calls. Responds `{"stopping": true}`, finishes in-flight requests, closes the index cleanly, and removes the runtime file on the way out.
+
 ## GET /api/sources
 
 Indexed folders with counts.

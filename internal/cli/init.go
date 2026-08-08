@@ -31,7 +31,7 @@ automatically while the daemon runs.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			folder := "."
 			if len(args) == 1 {
-				folder = args[0]
+				folder = expandHome(args[0])
 			}
 			return runInit(cmd, folder, tag, excludes, mcp, cmd.Flags().Changed("mcp"), yes)
 		},

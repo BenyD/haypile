@@ -741,3 +741,38 @@ func TestPickAPI(t *testing.T) {
 		t.Errorf("bad kind returned %d, want 400", resp.StatusCode)
 	}
 }
+
+// TestShutdownEndpoint: POST /api/shutdown is the portable `hay stop`.
+// The daemon must exit through its graceful path, which removes the
+// runtime file; a hard kill would leave it behind.
+func TestShutdownEndpoint(t *testing.T) {
+	c := startDaemon(t)
+	rt := filepath.Join(os.Getenv("HAYPILE_DIR"), runtimeFile)
+	if _, err := os.Stat(rt); err != nil {
+		t.Fatalf("runtime file missing while daemon runs: %v", err)
+	}
+
+	if err := c.Shutdown(); err != nil {
+		t.Fatalf("Shutdown: %v", err)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := c.health(); err != nil {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if _, err := c.health(); err == nil {
+		t.Fatal("daemon still answering 5s after shutdown")
+	}
+	// The graceful exit path must have cleaned up the runtime file.
+	deadline = time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(rt); os.IsNotExist(err) {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("runtime file still present after graceful shutdown")
+}

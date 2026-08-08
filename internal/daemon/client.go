@@ -77,17 +77,31 @@ func staleVersion(daemonV, cliV string) bool {
 	return daemonV != "" && cliV != "" && daemonV != cliV
 }
 
+// Shutdown asks the daemon to exit gracefully: in-flight requests
+// finish, the store closes cleanly, and the runtime file is removed.
+func (c *Client) Shutdown() error {
+	var out struct {
+		Stopping bool `json:"stopping"`
+	}
+	return c.post("/api/shutdown", struct{}{}, &out)
+}
+
 // retire asks the old daemon to exit and waits briefly for the port to
 // clear so the caller can start the new binary without a bind race.
+// The API shutdown is the portable graceful path (Windows cannot deliver
+// SIGTERM to a detached process); signals and Kill are the fallbacks for
+// a daemon too old or too wedged to answer it.
 func retire(pid int, c *Client) {
 	p, err := os.FindProcess(pid)
 	if err != nil {
 		return
 	}
-	if runtime.GOOS == "windows" {
-		p.Kill() // Windows cannot deliver SIGTERM
-	} else {
-		p.Signal(syscall.SIGTERM)
+	if c.Shutdown() != nil {
+		if runtime.GOOS == "windows" {
+			p.Kill()
+		} else {
+			p.Signal(syscall.SIGTERM)
+		}
 	}
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {

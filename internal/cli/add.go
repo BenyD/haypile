@@ -24,7 +24,7 @@ func newAddCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
 
-			stats, model, err := indexSource(cmd, args[0], tag, true)
+			stats, model, err := indexSource(cmd, expandHome(args[0]), tag, true)
 			if err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 	if progress {
 		out := cmd.OutOrStdout()
 		fmt.Fprintf(out, "Indexing %s…\n", path)
-		if isTerminal(out) {
+		if canRewrite(out) {
 			// One rewritten line with a fraction and an ETA; redraws
 			// are throttled so tiny files do not flood the terminal.
 			var eta etaTracker
@@ -139,7 +139,7 @@ func indexSource(cmd *cobra.Command, path, tag string, progress bool) (ingest.St
 func liveProgress(cmd *cobra.Command, c *daemon.Client, path string) func() {
 	out := cmd.OutOrStdout()
 	fmt.Fprintf(out, "Indexing %s…\n", path)
-	tty := isTerminal(out)
+	tty := canRewrite(out)
 
 	// Redraws are cheap on a terminal and worth doing often. Milestones
 	// fire at most ten times a phase, so polling that fast buys nothing.

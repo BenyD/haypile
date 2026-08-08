@@ -1,5 +1,7 @@
 /* Typed client for the daemon's localhost API. */
 
+import { basename } from './paths';
+
 export type SearchResult = {
   path: string;
   page?: number;
@@ -194,7 +196,7 @@ export function headingOf(text?: string): string | null {
    plus its real page or heading; the chunk ordinal only as a last
    resort for formats with neither. */
 export function citeLabel(r: SearchResult): string {
-  const name = r.path.slice(r.path.lastIndexOf('/') + 1);
+  const name = basename(r.path);
   if (r.page) return `${name}, page ${r.page}`;
   const heading = headingOf(r.snippet);
   if (heading) return `${name}, ${heading}`;

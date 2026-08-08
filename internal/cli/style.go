@@ -11,6 +11,18 @@ import (
 // everywhere color is unwelcome (pipes, NO_COLOR, dumb terminals), so
 // tests and scripts see stable output.
 
+// ansiOK reports whether the console interprets ANSI escapes. Always
+// true off Windows; on Windows, setupConsole flips it false when legacy
+// conhost refuses virtual terminal processing, and everything that
+// would emit an escape falls back to plain output.
+var ansiOK = true
+
+// canRewrite reports whether out can take cursor tricks: an interactive
+// terminal whose console interprets escapes.
+func canRewrite(out io.Writer) bool {
+	return isTerminal(out) && ansiOK
+}
+
 // isTerminal reports whether out is an interactive terminal, the only
 // place cursor tricks (a rewritten progress line) belong.
 func isTerminal(out io.Writer) bool {
@@ -29,7 +41,7 @@ func colorEnabled(out io.Writer) bool {
 	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
 		return false
 	}
-	return isTerminal(out)
+	return canRewrite(out)
 }
 
 // warnf prints one attention line, prefixed "!".

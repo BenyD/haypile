@@ -22,6 +22,12 @@ func parseNetstatOutbound(output string, pid int) int {
 		if f[4] != want || strings.EqualFold(f[3], "LISTENING") {
 			continue
 		}
+		// TIME_WAIT is a kernel remnant of a connection already closed,
+		// not a socket this process holds; counting one would make the
+		// "Outbound connections: 0" number flicker over dead state.
+		if strings.EqualFold(f[3], "TIME_WAIT") {
+			continue
+		}
 		peer := f[2]
 		if strings.HasPrefix(peer, "127.") || strings.HasPrefix(peer, "[::1]") ||
 			strings.HasPrefix(peer, "0.0.0.0") || strings.HasPrefix(peer, "[::]") {

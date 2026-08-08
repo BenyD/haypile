@@ -21,6 +21,7 @@ Request:
 | `query` | string | Required. Search text |
 | `tag` | string | Optional. Restrict to folders with this tag |
 | `limit` | int | Optional. Max results, default 10, cap 100 |
+| `mode` | string | Optional. `search` (default) returns only results that clear the relevance floors, possibly none. `answer` falls back to the nearest chunks instead of returning empty; it is what `hay ask` uses for retrieval |
 
 Response:
 
@@ -106,6 +107,10 @@ Everything `hay status` shows: the health fields plus uptime, sources, counts, p
 | `indexing` | Present only while an add pass runs: `phase` (`extracting` or `embedding`), `files_done`/`files_total`, `bytes_done`/`bytes_total`, `chunks_done`/`chunks_total` |
 
 `indexing` is what `hay add` polls to draw its live progress bar; scripts can poll it the same way.
+
+## POST /api/shutdown
+
+Asks the daemon to exit gracefully; this is what `hay stop` calls. Responds `{"stopping": true}`, finishes in-flight requests, closes the index cleanly, and removes the runtime file on the way out.
 
 ## GET /api/sources
 

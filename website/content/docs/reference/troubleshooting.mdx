@@ -19,7 +19,7 @@ export HAYPILE_ADDR=127.0.0.1:11600   # permanent
 The CLI refuses to route through a daemon serving a different database, which happens when the daemon was started with a different `HAYPILE_DIR`. It falls back to direct index access, so results are still correct; watching is what you lose. Fix by restarting the daemon under the environment you want:
 
 ```sh
-pkill -f "hay serve"
+hay stop
 hay add ~/Documents      # restarts it with the current HAYPILE_DIR
 ```
 
@@ -56,8 +56,8 @@ Check that the daemon is running with `hay status`; watching only happens while 
 The reset is safe and complete, because the index is derived data:
 
 ```sh
-pkill -f "hay serve"
-rm -rf ~/.haypile
+hay stop
+rm -rf ~/.haypile        # Windows: Remove-Item -Recurse -Force "$env:USERPROFILE\.haypile"
 hay add <your folders again>
 ```
 

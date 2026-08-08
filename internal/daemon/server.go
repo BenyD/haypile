@@ -47,6 +47,37 @@ type Server struct {
 	// instead of a spinner.
 	mu       sync.Mutex
 	indexing *ingest.Progress
+
+	// stopc is closed by /api/shutdown. It exists because signals are not
+	// portable: Windows cannot deliver SIGTERM to a detached process, so
+	// the graceful exit path has to be reachable over the API the daemon
+	// already serves.
+	stopc    chan struct{}
+	stopOnce sync.Once
+
+	// The outbound count is measured by shelling out (lsof, netstat), and
+	// the CLI polls status at 700ms for the whole of an indexing pass.
+	// On Windows each measurement is two netstat spawns walking the whole
+	// system TCP table, so the count is cached briefly; a few seconds of
+	// staleness does not weaken "prove it yourself".
+	outMu    sync.Mutex
+	outAt    time.Time
+	outConns int
+	outNote  string
+}
+
+// outboundTTL is how long a measured outbound count is served before
+// remeasuring.
+const outboundTTL = 5 * time.Second
+
+func (s *Server) outbound() (int, string) {
+	s.outMu.Lock()
+	defer s.outMu.Unlock()
+	if time.Since(s.outAt) > outboundTTL {
+		s.outConns, s.outNote = countOutbound()
+		s.outAt = time.Now()
+	}
+	return s.outConns, s.outNote
 }
 
 func (s *Server) setIndexing(p *ingest.Progress) {
@@ -94,6 +125,7 @@ func Run(ctx context.Context, addr, version string) error {
 		dbPath:  dbPath,
 		version: version,
 		started: time.Now(),
+		stopc:   make(chan struct{}),
 	}
 
 	s.watcher, err = newWatcher(st, emb)
@@ -132,15 +164,19 @@ func Run(ctx context.Context, addr, version string) error {
 
 	select {
 	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		return s.http.Shutdown(shutdownCtx)
+	case <-s.stopc:
 	case err := <-errc:
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
 		return err
 	}
+	// Graceful exit, whether the trigger was a signal or /api/shutdown:
+	// finish in-flight requests, then let the deferred store, watcher,
+	// and runtime-file cleanups run.
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return s.http.Shutdown(shutdownCtx)
 }
 
 // hostGuard rejects requests whose Host header does not name this
@@ -201,6 +237,7 @@ func (s *Server) routes() http.Handler {
 	r.Get("/api/chunk", s.handleChunk)
 	r.Get("/api/browse", s.handleBrowse)
 	r.Post("/api/pick", s.handlePick)
+	r.Post("/api/shutdown", s.handleShutdown)
 	r.Get("/api/sources", s.handleSources)
 	r.Post("/api/sources", s.handleAddSource)
 	r.Delete("/api/sources", s.handleRemoveSource)
@@ -275,9 +312,17 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		st.Files += src.Files
 		st.Chunks += src.Chunks
 	}
-	st.OutboundConns, st.OutboundNote = countOutbound()
+	st.OutboundConns, st.OutboundNote = s.outbound()
 	st.Indexing = s.getIndexing()
 	writeJSON(w, http.StatusOK, st)
+}
+
+// handleShutdown is POST /api/shutdown: the portable `hay stop`. The
+// response is written before the trigger fires; Shutdown waits for
+// in-flight requests, so this handler returning is what lets it finish.
+func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]bool{"stopping": true})
+	s.stopOnce.Do(func() { close(s.stopc) })
 }
 
 // QueryRequest is POST /api/query. Mode selects the retrieval strategy:

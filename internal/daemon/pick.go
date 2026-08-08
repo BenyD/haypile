@@ -51,6 +51,9 @@ func nativePickImpl(ctx context.Context, kind string) (string, error) {
 			script = `Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.OpenFileDialog; if ($d.ShowDialog() -eq 'OK') { $d.FileName }`
 		}
 		cmd = exec.CommandContext(ctx, "powershell", "-NoProfile", "-STA", "-Command", script)
+		// The dialog should appear alone, without a console window from
+		// the console-less daemon spawning a console-subsystem child.
+		hideWindow(cmd)
 	default:
 		args := []string{"--file-selection", "--title=Add to Haypile"}
 		if kind != "file" {

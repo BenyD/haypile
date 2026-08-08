@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, type Browse, type Source } from '../api';
+import { dirOf, isAbsolute, parentOf, sep, trimTrailingSep } from '../paths';
 
 /* Sources manager: everything `hay add`, `hay list`, and `hay remove`
    do, from the browser: folders or single files. Picking works by asking
@@ -72,13 +73,13 @@ export function SourcesModal({ onClose, onChanged, indexing, indexNote, addSourc
   const complete = (value: string) => {
     window.clearTimeout(suggTimer.current);
     const seq = ++suggSeq.current;
-    if (!value.startsWith('/')) {
+    if (!isAbsolute(value)) {
       setSugg([]);
       return;
     }
     suggTimer.current = window.setTimeout(() => {
-      const cut = value.lastIndexOf('/');
-      const dir = cut === 0 ? '/' : value.slice(0, cut);
+      const dir = dirOf(value);
+      const cut = Math.max(value.lastIndexOf('/'), value.lastIndexOf('\\'));
       const prefix = value.slice(cut + 1).toLowerCase();
       api
         .browse(dir)
@@ -102,7 +103,7 @@ export function SourcesModal({ onClose, onChanged, indexing, indexNote, addSourc
   };
 
   const accept = (s: Suggestion) => {
-    const v = s.dir ? s.path + '/' : s.path;
+    const v = s.dir ? s.path + sep(s.path) : s.path;
     setPath(v);
     if (s.dir) complete(v);
     else setSugg([]);
@@ -397,7 +398,7 @@ function FolderBrowser({
   // Open where the user already is: the typed path if it resolves, its
   // parent if the last segment is partial, home otherwise.
   useEffect(() => {
-    const p = startPath.startsWith('/') ? startPath.replace(/\/+$/, '') || '/' : '';
+    const p = isAbsolute(startPath) ? trimTrailingSep(startPath) : '';
     if (!p) {
       void load();
       return;
@@ -406,9 +407,8 @@ function FolderBrowser({
       .browse(p)
       .then((b) => setView(b))
       .catch(() => {
-        const parent = p.slice(0, p.lastIndexOf('/')) || '/';
         void api
-          .browse(parent)
+          .browse(parentOf(p))
           .then((b) => setView(b))
           .catch(() => load());
       });

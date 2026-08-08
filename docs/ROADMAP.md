@@ -63,7 +63,7 @@ Haypile's brand is trust, so these are versioned with the code and never
 quietly redrawn:
 
 1. **The open/paid boundary is declared upfront.** Open forever under
-   AGPL-3.0: indexing, search, ask, REST API, MCP, CLI, and the coming
+   AGPL-3.0: indexing, search, ask, REST API, MCP, CLI, and the
    single-user web UI. The full single-user product, no feature hostages.
    Paid, later: team features (auth, roles, audit logs, shared indexes) and
    a hosted version.

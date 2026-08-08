@@ -13,6 +13,8 @@ import (
 
 	"github.com/ncruces/go-sqlite3/driver"
 	"github.com/ncruces/go-sqlite3/ext/fts5"
+
+	"github.com/BenyD/haypile/internal/pathnorm"
 )
 
 const schema = `
@@ -124,9 +126,57 @@ func Open(path string) (*Store, error) {
 
 func (s *Store) Close() error { return s.db.Close() }
 
-// AddSource registers a folder (idempotent) and returns its id.
+// sourceIDs returns every source matching path: the byte-exact match
+// first, then — on case-insensitive filesystems — any row whose stored
+// path differs only in case. The fold pass scans the whole table, which
+// is fine because sources number in the dozens; it is what lets an index
+// built before path canonicalization (or a path typed in another case)
+// still resolve on Windows. UNIQUE(path) is byte-exact, so more than one
+// fold match can exist in a legacy index.
+func (s *Store) sourceIDs(path string) ([]int64, error) {
+	var ids []int64
+	var exact int64
+	err := s.db.QueryRow(`SELECT id FROM sources WHERE path = ?`, path).Scan(&exact)
+	if err == nil {
+		ids = append(ids, exact)
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	if !pathnorm.CaseInsensitive {
+		return ids, nil
+	}
+	rows, err := s.db.Query(`SELECT id, path FROM sources`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var stored string
+		if err := rows.Scan(&id, &stored); err != nil {
+			return nil, err
+		}
+		if id != exact && pathnorm.Equal(stored, path) {
+			ids = append(ids, id)
+		}
+	}
+	return ids, rows.Err()
+}
+
+// AddSource registers a folder (idempotent) and returns its id. A row
+// stored with different path casing is reused, not duplicated, and keeps
+// its original display casing.
 func (s *Store) AddSource(path, tag string) (int64, error) {
-	_, err := s.db.Exec(`
+	ids, err := s.sourceIDs(path)
+	if err != nil {
+		return 0, err
+	}
+	if len(ids) > 0 {
+		_, err := s.db.Exec(`UPDATE sources SET tag = ? WHERE id = ?`, tag, ids[0])
+		return ids[0], err
+	}
+	// ON CONFLICT keeps a concurrent add of the same path idempotent.
+	_, err = s.db.Exec(`
 		INSERT INTO sources(path, tag) VALUES (?, ?)
 		ON CONFLICT(path) DO UPDATE SET tag = excluded.tag`, path, tag)
 	if err != nil {
@@ -137,23 +187,27 @@ func (s *Store) AddSource(path, tag string) (int64, error) {
 	return id, err
 }
 
-// SourceID looks up a source by its exact registered path.
+// SourceID looks up a source by its registered path (case-folded on
+// case-insensitive filesystems).
 func (s *Store) SourceID(path string) (int64, error) {
-	var id int64
-	err := s.db.QueryRow(`SELECT id FROM sources WHERE path = ?`, path).Scan(&id)
-	if errors.Is(err, sql.ErrNoRows) {
+	ids, err := s.sourceIDs(path)
+	if err != nil {
+		return 0, err
+	}
+	if len(ids) == 0 {
 		return 0, fmt.Errorf("%s is not an indexed source", path)
 	}
-	return id, err
+	return ids[0], nil
 }
 
 // SourceTag returns the tag a source was registered with.
 func (s *Store) SourceTag(path string) (string, error) {
-	var tag string
-	err := s.db.QueryRow(`SELECT tag FROM sources WHERE path = ?`, path).Scan(&tag)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
+	ids, err := s.sourceIDs(path)
+	if err != nil || len(ids) == 0 {
+		return "", err
 	}
+	var tag string
+	err = s.db.QueryRow(`SELECT tag FROM sources WHERE id = ?`, ids[0]).Scan(&tag)
 	return tag, err
 }
 
@@ -189,15 +243,16 @@ func (s *Store) Sources() ([]SourceInfo, error) {
 }
 
 // RemoveSource un-indexes a folder and everything under it. It reports
-// whether the folder was indexed at all.
+// whether the folder was indexed at all. Every case-folded match goes,
+// so a legacy index holding the same folder under two casings is fully
+// cleaned by one remove.
 func (s *Store) RemoveSource(path string) (bool, error) {
-	var id int64
-	err := s.db.QueryRow(`SELECT id FROM sources WHERE path = ?`, path).Scan(&id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
+	ids, err := s.sourceIDs(path)
 	if err != nil {
 		return false, err
+	}
+	if len(ids) == 0 {
+		return false, nil
 	}
 
 	tx, err := s.db.Begin()
@@ -206,18 +261,20 @@ func (s *Store) RemoveSource(path string) (bool, error) {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec(`DELETE FROM embeddings WHERE chunk_id IN
-		(SELECT c.id FROM chunks c JOIN files f ON c.file_id = f.id WHERE f.source_id = ?)`, id); err != nil {
-		return false, err
-	}
-	if _, err := tx.Exec(`DELETE FROM chunks WHERE file_id IN (SELECT id FROM files WHERE source_id = ?)`, id); err != nil {
-		return false, err
-	}
-	if _, err := tx.Exec(`DELETE FROM files WHERE source_id = ?`, id); err != nil {
-		return false, err
-	}
-	if _, err := tx.Exec(`DELETE FROM sources WHERE id = ?`, id); err != nil {
-		return false, err
+	for _, id := range ids {
+		if _, err := tx.Exec(`DELETE FROM embeddings WHERE chunk_id IN
+			(SELECT c.id FROM chunks c JOIN files f ON c.file_id = f.id WHERE f.source_id = ?)`, id); err != nil {
+			return false, err
+		}
+		if _, err := tx.Exec(`DELETE FROM chunks WHERE file_id IN (SELECT id FROM files WHERE source_id = ?)`, id); err != nil {
+			return false, err
+		}
+		if _, err := tx.Exec(`DELETE FROM files WHERE source_id = ?`, id); err != nil {
+			return false, err
+		}
+		if _, err := tx.Exec(`DELETE FROM sources WHERE id = ?`, id); err != nil {
+			return false, err
+		}
 	}
 	return true, tx.Commit()
 }

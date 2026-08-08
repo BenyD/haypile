@@ -13,6 +13,7 @@ import (
 	"github.com/BenyD/haypile/internal/embed"
 	"github.com/BenyD/haypile/internal/index"
 	"github.com/BenyD/haypile/internal/ingest"
+	"github.com/BenyD/haypile/internal/pathnorm"
 )
 
 // debounce is how long a path must stay quiet before it is indexed:
@@ -133,21 +134,30 @@ func (w *watcher) watchSource(root string) error {
 
 func (w *watcher) unwatchSource(root string) {
 	w.mu.Lock()
-	delete(w.sources, root)
+	// Case-folded match: on Windows the map may hold this root under a
+	// different casing (registered from a pre-canonicalization index).
+	for r := range w.sources {
+		if pathnorm.Equal(r, root) {
+			delete(w.sources, r)
+		}
+	}
 	w.mu.Unlock()
 	// Watches on directories under root become inert (ownerOf finds no
 	// source); fsnotify removes them automatically if the dirs vanish.
 }
 
 // ownerOf maps an event path to its source. Longest matching root wins so
-// nested sources resolve to the most specific one.
+// nested sources resolve to the most specific one. Matching folds case on
+// case-insensitive filesystems: ReadDirectoryChangesW may report a casing
+// that differs from the registered root, and those events must not be
+// dropped.
 func (w *watcher) ownerOf(path string) (int64, string, bool) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	var bestRoot string
 	var bestID int64
 	for root, id := range w.sources {
-		if path == root || strings.HasPrefix(path, root+string(filepath.Separator)) {
+		if pathnorm.HasPrefix(path, root) {
 			if len(root) > len(bestRoot) {
 				bestRoot, bestID = root, id
 			}
@@ -208,14 +218,21 @@ func (w *watcher) handleEvent(ev fsnotify.Event) {
 		if !ingest.Supported(ev.Name) {
 			return
 		}
+		// Canonical casing before the path is used as a debounce key or
+		// stored: on Windows an event whose casing differs from the walk
+		// would otherwise create a second row for the same file.
+		name := ev.Name
+		if c, err := pathnorm.Canon(name); err == nil {
+			name = c
+		}
 		// Excluded paths generate events like any other; drop them here
 		// so the workers never index against the folder's config.
 		if cfg, err := ingest.LoadConfig(root); err == nil {
-			if rel, err := filepath.Rel(root, ev.Name); err == nil && cfg.Excluded(rel) {
+			if rel, err := filepath.Rel(root, name); err == nil && cfg.Excluded(rel) {
 				return
 			}
 		}
-		w.debounced(ev.Name, job{kind: jobFile, sourceID: id, path: ev.Name})
+		w.debounced(name, job{kind: jobFile, sourceID: id, path: name})
 	}
 }
 

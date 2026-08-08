@@ -77,6 +77,10 @@ func canonCase(abs string) string {
 		if resolving {
 			if name, ok := onDiskName(cur, comp); ok {
 				comp = name
+			} else if _, err := os.Lstat(filepath.Join(cur, comp)); err == nil {
+				// Exists but under no comparable name in the listing: an
+				// 8.3 short name (RUNNER~1). Keep it as given and keep
+				// resolving the components below it.
 			} else {
 				// Vanished (or unreadable) from here down: nothing left
 				// to resolve against, keep the given casing.

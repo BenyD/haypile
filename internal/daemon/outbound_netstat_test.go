@@ -11,13 +11,15 @@ Active Connections
   TCP    127.0.0.1:11500        127.0.0.1:52310        ESTABLISHED     4212
   TCP    10.0.0.5:52034         93.184.216.34:443      ESTABLISHED     4212
   TCP    10.0.0.5:52099         93.184.216.34:443      TIME_WAIT       0
+  TCP    10.0.0.5:52101         93.184.216.34:443      TIME_WAIT       4212
   TCP    10.0.0.5:53000         52.84.10.9:443         ESTABLISHED     9999
   TCP    [::1]:11500            [::]:0                 LISTENING       4212
   TCP    [::1]:11500            [::1]:52401            ESTABLISHED     4212
 `
 
 func TestParseNetstatOutbound(t *testing.T) {
-	// For pid 4212: two listeners skipped, two loopback peers skipped,
+	// For pid 4212: two listeners skipped, two loopback peers skipped, a
+	// TIME_WAIT remnant the kernel still attributes to the pid skipped,
 	// exactly one real outbound connection remains.
 	if got := parseNetstatOutbound(netstatSample, 4212); got != 1 {
 		t.Errorf("pid 4212: got %d outbound, want 1", got)

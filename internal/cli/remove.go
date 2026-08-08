@@ -16,7 +16,7 @@ func newRemoveCmd() *cobra.Command {
 		Short: "Un-index a folder and stop watching it",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			abs, err := filepath.Abs(args[0])
+			abs, err := filepath.Abs(expandHome(args[0]))
 			if err != nil {
 				return err
 			}

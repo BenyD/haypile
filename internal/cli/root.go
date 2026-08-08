@@ -36,6 +36,7 @@ func newRootCmd() *cobra.Command {
 		newListCmd(),
 		newRemoveCmd(),
 		newStatusCmd(),
+		newStopCmd(),
 		newServeCmd(),
 		newWebCmd(),
 		newMCPStdioCmd(),
@@ -46,5 +47,7 @@ func newRootCmd() *cobra.Command {
 
 // Execute runs the CLI. It is the only entry point main() needs.
 func Execute() error {
+	restore := setupConsole()
+	defer restore()
 	return newRootCmd().Execute()
 }

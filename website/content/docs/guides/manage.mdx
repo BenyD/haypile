@@ -15,11 +15,13 @@ To run it in the foreground instead, with logs in your terminal:
 hay serve
 ```
 
-To stop a background daemon:
+To stop a background daemon, on any platform:
 
 ```sh
-pkill -f "hay serve"
+hay stop
 ```
+
+It exits gracefully: in-flight requests finish, the index closes cleanly, and the runtime file is removed. (`pkill -f "hay serve"` still works on macOS and Linux; `hay stop` is the way that also works on Windows, where a detached process cannot receive signals.)
 
 Stopping it costs you nothing permanent. Search and every other command keep working through direct index access; folder watching pauses until the next command starts the daemon again.
 
@@ -33,7 +35,7 @@ curl -fsSL haypile.sh | sh            # install script (replaces the binary)
 irm https://haypile.sh/install.ps1 | iex   # Windows PowerShell
 ```
 
-Then restart the daemon so the new binary serves: `pkill -f "hay serve"` and run any `hay` command.
+Then restart the daemon so the new binary serves: `hay stop` and run any `hay` command. (Any command from the new binary also retires an old daemon on sight, so forgetting this step costs nothing but a moment.) On Windows the installer stops a running daemon itself before swapping the binary.
 
 Your index needs nothing from you across versions. There are no migrations to run, and when an update improves text extraction, affected files re-index themselves on the next pass; unchanged text hits the embedding cache, so even a full re-index is quick.
 
@@ -42,12 +44,18 @@ Your index needs nothing from you across versions. There are no migrations to ru
 Four steps remove every trace. Haypile never modifies your documents, so this is the complete list:
 
 ```sh
-pkill -f "hay serve"          # 1. stop the daemon
+hay stop                      # 1. stop the daemon
 brew uninstall hay            # 2. remove the binary (script installs: rm /usr/local/bin/hay)
 rm -rf ~/.haypile             # 3. delete the index and runtime files
 ```
 
-On Windows the binary lives under `%LOCALAPPDATA%\Programs\hay` and the data directory is `%USERPROFILE%\.haypile`.
+On Windows, in PowerShell:
+
+```powershell
+hay stop
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\hay"   # the binary
+Remove-Item -Recurse -Force "$env:USERPROFILE\.haypile"        # the index and runtime files
+```
 
 4. Folders set up with `hay init` may contain a `.haypile.yml` and `.mcp.json`; delete them if you do not want the config to apply on a future install.
 

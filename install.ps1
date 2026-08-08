@@ -43,7 +43,29 @@ try {
     Expand-Archive -Path $zip -DestinationPath $tmp -Force
 
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-    Copy-Item -Path (Join-Path $tmp 'hay.exe') -Destination (Join-Path $InstallDir 'hay.exe') -Force
+    $dest = Join-Path $InstallDir 'hay.exe'
+    $old = Join-Path $InstallDir 'hay.exe.old'
+
+    # A leftover .old from the previous update can go now; if it is still
+    # the running daemon it stays locked and we leave it for next time.
+    Remove-Item -Path $old -Force -ErrorAction SilentlyContinue
+
+    if (Test-Path $dest) {
+        # Ask a running daemon to exit so the new binary serves right away.
+        # Older binaries have no stop command; ignore that.
+        & $dest stop 2>$null | Out-Null
+
+        # Windows refuses to overwrite a running executable but allows
+        # renaming it, so updates go rename-then-copy. If even the rename
+        # fails, something else holds the file open exclusively.
+        try {
+            Move-Item -Path $dest -Destination $old -Force
+        }
+        catch {
+            Fail "cannot replace $dest (is it running?): stop hay ('hay stop') and retry"
+        }
+    }
+    Copy-Item -Path (Join-Path $tmp 'hay.exe') -Destination $dest -Force
 }
 finally {
     Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue

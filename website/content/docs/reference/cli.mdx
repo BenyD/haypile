@@ -67,6 +67,10 @@ Un-indexes a source and stops watching it. The path must match what was added (s
 
 Daemon state, index location, counts, model, queued indexing jobs, and the measured outbound connection count.
 
+## hay stop
+
+Stops the background daemon gracefully: in-flight requests finish, the index closes cleanly, and the runtime file is removed. Folder watching pauses until the next command starts the daemon again; search keeps working through direct index access. Works on every platform, including Windows, where a detached process cannot receive signals.
+
 ## hay serve
 
 Runs the daemon in the foreground: REST API and MCP on `localhost:11500`, plus the folder watcher. Usually you never run this yourself.

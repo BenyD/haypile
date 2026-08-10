@@ -6,7 +6,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-chi/chi/v5 v5.3.1
-	github.com/klippa-app/go-pdfium v1.19.4
+	github.com/klippa-app/go-pdfium v1.19.6
 	github.com/ncruces/go-sqlite3 v0.35.2
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/net v0.57.0

@@ -4,15 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { useDocsSearch } from 'fumadocs-core/search/client';
 import { oramaStaticClient } from 'fumadocs-core/search/client/orama-static';
-import { create } from '@orama/orama';
 import { useSearchContext } from 'fumadocs-ui/contexts/search';
-
-function initOrama() {
-  return create({
-    schema: { _: 'string' },
-    language: 'english',
-  });
-}
 
 type Grouped = { url: string; title: string; snippet?: string };
 
@@ -45,7 +37,7 @@ export function NavSearch() {
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
   const { search, setSearch, query } = useDocsSearch({
-    client: oramaStaticClient({ initOrama }),
+    client: oramaStaticClient(),
   });
 
   const results: Grouped[] = [];

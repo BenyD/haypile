@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 /* WebMCP (https://webmachinelearning.github.io/webmcp): an agent driving
    a browser can call these instead of scraping the page.
 
-   The docs search index is the same static Orama bundle the search
+   The docs search index is the same static ZBSearch bundle the search
    dialog uses, so an agent gets the site's own search rather than
    whatever it can infer from the rendered HTML. */
 
@@ -39,15 +39,10 @@ export function WebMCP() {
     async function register() {
       // Loaded only once an agent is actually present, so the search
       // bundle stays off the critical path for human visitors.
-      const [{ oramaStaticClient }, { create }] = await Promise.all([
-        import('fumadocs-core/search/client/orama-static'),
-        import('@orama/orama'),
-      ]);
+      const { oramaStaticClient } = await import('fumadocs-core/search/client/orama-static');
       if (cancelled) return;
 
-      const client = oramaStaticClient({
-        initOrama: () => create({ schema: { _: 'string' }, language: 'english' }),
-      });
+      const client = oramaStaticClient();
 
       modelContext?.provideContext?.({
         tools: [

@@ -13,6 +13,14 @@ updates:
     cooldown:
       default-days: 7
     groups:
+      # Security updates ignore the weekly schedule and, ungrouped, arrive as
+      # one PR per advisory. A week in Aug 2026 produced ~20 such PRs on
+      # lensdrop, each running CI, auto-merging, and rebasing every other open
+      # PR. One PR per ecosystem instead.
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       minor-and-patch:
         applies-to: version-updates
         update-types:
@@ -31,6 +39,14 @@ updates:
     cooldown:
       default-days: 7
     groups:
+      # Security updates ignore the weekly schedule and, ungrouped, arrive as
+      # one PR per advisory. A week in Aug 2026 produced ~20 such PRs on
+      # lensdrop, each running CI, auto-merging, and rebasing every other open
+      # PR. One PR per ecosystem instead.
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       minor-and-patch:
         applies-to: version-updates
         update-types:

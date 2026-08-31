@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.3.2
 	github.com/klippa-app/go-pdfium v1.19.8
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/spf13/cobra v1.10.2

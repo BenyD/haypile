@@ -9,9 +9,9 @@ require (
 	github.com/klippa-app/go-pdfium v1.19.8
 	github.com/ncruces/go-sqlite3 v0.35.4
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/net v0.58.0
+	golang.org/x/net v0.59.0
 	golang.org/x/sys v0.48.0
-	golang.org/x/text v0.41.0
+	golang.org/x/text v0.42.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -1,19 +1,18 @@
-# Weekly grouped dependency updates. Security alerts and security-update PRs
+# Monthly grouped dependency updates. Security alerts and security-update PRs
 # are configured in repo settings, not here.
 version: 2
 updates:
-  # Go modules: one weekly PR for all minor/patch bumps; majors arrive
+  # Go modules: one monthly PR for all minor/patch bumps; majors arrive
   # individually. Cooldown: never propose a version released less than 7 days
   # ago, so compromised releases get caught and yanked before they reach us.
   - package-ecosystem: gomod
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
     cooldown:
       default-days: 7
     groups:
-      # Security updates ignore the weekly schedule and, ungrouped, arrive as
+      # Security updates ignore the monthly schedule and, ungrouped, arrive as
       # one PR per advisory. A week in Aug 2026 produced ~20 such PRs on
       # lensdrop, each running CI, auto-merging, and rebasing every other open
       # PR. One PR per ecosystem instead.
@@ -30,16 +29,15 @@ updates:
       prefix: chore(deps)
     open-pull-requests-limit: 10
 
-  # Website (Next.js docs site): one weekly PR for minor/patch, same cooldown.
+  # Website (Next.js docs site): one monthly PR for minor/patch, same cooldown.
   - package-ecosystem: npm
     directory: /website
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
     cooldown:
       default-days: 7
     groups:
-      # Security updates ignore the weekly schedule and, ungrouped, arrive as
+      # Security updates ignore the monthly schedule and, ungrouped, arrive as
       # one PR per advisory. A week in Aug 2026 produced ~20 such PRs on
       # lensdrop, each running CI, auto-merging, and rebasing every other open
       # PR. One PR per ecosystem instead.
@@ -56,12 +54,11 @@ updates:
       prefix: chore(deps)
     open-pull-requests-limit: 10
 
-  # GitHub Actions: one weekly PR for everything, same 7-day cooldown.
+  # GitHub Actions: one monthly PR for everything, same 7-day cooldown.
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
     cooldown:
       default-days: 7
     groups:

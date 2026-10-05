@@ -1,4 +1,4 @@
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import type { BaseLayoutProps } from '@fumadocs/base-ui/layouts/shared';
 import { HaypileMark } from '@/components/logo';
 import { appName, gitConfig } from './shared';
 

@@ -45,6 +45,14 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+      # The fumadocs packages pin each other to exact versions, so bumping
+      # one without the others fails npm ci with ERESOLVE (#59, #67). Groups
+      # match first-wins, so this has to sit above minor-and-patch.
+      fumadocs:
+        applies-to: version-updates
+        patterns:
+          - "fumadocs-*"
+          - "@fumadocs/*"
       minor-and-patch:
         applies-to: version-updates
         update-types:

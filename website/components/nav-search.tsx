@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { useDocsSearch } from 'fumadocs-core/search/client';
 import { oramaStaticClient } from 'fumadocs-core/search/client/orama-static';
-import { useSearchContext } from 'fumadocs-ui/contexts/search';
+import { useSearchContext } from '@fumadocs/base-ui/contexts/search';
 
 type Grouped = { url: string; title: string; snippet?: string };
 

@@ -3,15 +3,15 @@ module github.com/BenyD/haypile
 go 1.26.5
 
 require (
-	github.com/bmatcuk/doublestar/v4 v4.10.2
+	github.com/bmatcuk/doublestar/v4 v4.10.4
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/go-chi/chi/v5 v5.3.2
-	github.com/klippa-app/go-pdfium v1.21.0
+	github.com/go-chi/chi/v5 v5.5.0
+	github.com/klippa-app/go-pdfium v1.21.4
 	github.com/ncruces/go-sqlite3 v0.35.6
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/net v0.59.0
-	golang.org/x/sys v0.48.0
-	golang.org/x/text v0.42.0
+	golang.org/x/net v0.61.0
+	golang.org/x/sys v0.49.0
+	golang.org/x/text v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
